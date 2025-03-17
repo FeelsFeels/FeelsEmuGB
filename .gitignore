@@ -30,3 +30,23 @@
 *.exe
 *.out
 *.app
+
+# Visual Studio files to ignore
+*.ipch
+*.suo
+*.db
+*.pdb
+*.ilk
+.vs
+.tmp
+*.tlog
+*.idb
+*.exp
+*.iobj
+*.ipdb
+bin
+Debug
+Release
+x64
+GameInstaller/GAMEDIRECTORY
+.clang-format
