@@ -50,3 +50,7 @@ Release
 x64
 GameInstaller/GAMEDIRECTORY
 .clang-format
+
+
+# Build files
+build*/
