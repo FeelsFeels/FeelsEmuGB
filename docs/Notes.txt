@@ -1,0 +1,11 @@
+The bible
+https://gbdev.io/pandocs/
+
+Opcode table
+https://gbdev.io/gb-opcodes/optables/
+
+The Ultimate GameBoy Talk
+https://www.youtube.com/watch?v=HyzD8pNlpwI
+
+Tester ROMs
+https://github.com/retrio/gb-test-roms
