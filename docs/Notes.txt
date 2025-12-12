@@ -9,3 +9,30 @@ https://www.youtube.com/watch?v=HyzD8pNlpwI
 
 Tester ROMs
 https://github.com/retrio/gb-test-roms
+
+
+====================
+====== NOTES =======
+====================
+On the memory map:
+The GB has a 16-bit address space, 0x0000 - 0xFFFF
+
+0000	3FFF	16 KiB: Cartridge. Fixed Bank
+4000	7FFF	16 KiB: Cartridge. Switchable ROM Bank. We access "extra memory" in the cartridge (Pokémon red is 512KB!) in this address range via the Memory Bank Controller (MBC).
+8000	9FFF	 8 KiB: Video RAM. Tile Data, Tile Maps. Important for the PPU.
+A000	BFFF	 8 KiB: External RAM. This lives on the cartridge. I think this is where the save files can live.
+C000	DFFF	 8 KiB: Work RAM.
+E000	FDFF this section is broken. It's a mirror of C000-DDFF. Just don't use this, or redirect to the work RAM.
+FE00	FE9F	     : Object Attribute Memory (OAM). Holds up to 40 sprites.
+FEA0	FEFF	Not Usable
+FF00	FF7F	     : I/O Registers
+FF80	FFFE	     : High RAM (HRAM). 127 bytes of RAM that can be accessed faster (similar to CPU cache)
+FFFF	FFFF	Interrupt Enable register (IE)
+
+
+On the Memory Bank Controller (MBC):
+https://retrocomputing.stackexchange.com/questions/11732/how-does-the-gameboys-memory-bank-switching-work
+
+
+
+
