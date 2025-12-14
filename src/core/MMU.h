@@ -8,14 +8,18 @@
 class MMU
 {
 public:
-	MMU();
-	~MMU();
+	MMU() = default;
+	~MMU() = default;
 
 	void Read();
 	void Write();
 	
+	void AttachCartridge(Cartridge* cart);
 
 
 private:
-	
+	Cartridge* cartridge;
+
+
+
 };

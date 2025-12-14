@@ -10,9 +10,10 @@ public:
 	GameBoy();
 	~GameBoy();
 
-private:
+	void InsertCartridge(std::string filepath);
 
-	std::unique_ptr<Cartridge> cart;
+private:
+	std::shared_ptr<Cartridge> cart;
 
 	MMU bus;
 };

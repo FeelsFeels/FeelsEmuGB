@@ -1,18 +1,22 @@
-#include <iostream>
-#include <glad/glad.h>  // Include glad BEFORE SDL
-#include <SDL.h>
+#include "utils/VFS/VFS.h"
+#include "utils/Filepaths.h"
 
-// ImGui Includes
+#include <glad/glad.h>
+#include <SDL.h>
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
 
+#include <iostream>
 // Screen dimensions
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
 
+
 int main(int argc, char* argv[])
 {
+    VFS::MountDirectory("", Filepaths::roms);
+
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
         printf("Error: %s\n", SDL_GetError());

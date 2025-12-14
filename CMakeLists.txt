@@ -73,6 +73,9 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 find_package(OpenGL REQUIRED)
 
+# PCH
+target_precompile_headers(${PROJECT_NAME} PRIVATE src/pch.h)
+
 target_link_libraries(${PROJECT_NAME} PRIVATE 
     imgui 
     glad 
