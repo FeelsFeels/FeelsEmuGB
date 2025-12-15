@@ -15,7 +15,7 @@ public:
 	void Write();
 	
 	void AttachCartridge(Cartridge* cart);
-
+	void RemoveCartridge();
 
 private:
 	Cartridge* cartridge;

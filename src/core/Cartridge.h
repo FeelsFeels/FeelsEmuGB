@@ -17,13 +17,13 @@ public:
 
 	static std::unique_ptr<Cartridge> CreateCartridge(std::vector<uint8_t>&& romData);
 
+	CartridgeInfo info;
 private:
 	static CartridgeInfo ParseCartridgeHeader(const std::vector<uint8_t>& romData);
 
 
 
 protected:
-	CartridgeInfo info;
 	std::vector<uint8_t> rom;
 	std::vector<uint8_t> ram;
 };

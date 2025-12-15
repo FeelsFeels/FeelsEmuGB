@@ -1,5 +1,7 @@
 #include "utils/VFS/VFS.h"
 #include "utils/Filepaths.h"
+#include "core/Gameboy.h"
+#include "editor/Editor.h"
 
 #include <glad/glad.h>
 #include <SDL.h>
@@ -8,6 +10,7 @@
 #include "imgui_impl_opengl3.h"
 
 #include <iostream>
+
 // Screen dimensions
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
@@ -17,6 +20,7 @@ int main(int argc, char* argv[])
 {
     VFS::MountDirectory("", Filepaths::roms);
 
+#pragma region Setup
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
@@ -61,6 +65,14 @@ int main(int argc, char* argv[])
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
+#pragma endregion
+
+    GameBoy gameboy;
+    gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
+
+#ifdef _DEBUG
+    Editor editor;
+#endif
 
     // Main Loop
     bool done = false;
@@ -81,18 +93,14 @@ int main(int argc, char* argv[])
         ImGui::NewFrame();
 
         // IMGUI CODE
-        {
-            ImGui::Begin("Emulator Controls");
-            ImGui::Text("Application average %.3f ms/frame (%.1f FPS)", 1000.0f / io.Framerate, io.Framerate);
-            ImGui::End();
-        }
+        editor.Render(gameboy);
 
-        // --- YOUR GAMEBOY RENDERING WOULD GO HERE ---
-        // 1. Run CPU for 1 frame
-        // 2. Update Texture with PPU pixels
+        // GAMEBOY RENDERING HERE
+        // Run CPU for 1 frame
+        // Update Texture with PPU pixels
+
 
         // Rendering
-        ImGui::Render();
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f); // Clear background
         glClear(GL_COLOR_BUFFER_BIT);

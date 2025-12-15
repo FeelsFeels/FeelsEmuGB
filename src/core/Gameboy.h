@@ -12,7 +12,11 @@ public:
 
 	void InsertCartridge(std::string filepath);
 
+	const CartridgeInfo& GetCartInfo() const;
+	const std::string& GetCartPath() const { return pathToCartridge; };
+
 private:
+	std::string pathToCartridge;
 	std::shared_ptr<Cartridge> cart;
 
 	MMU bus;

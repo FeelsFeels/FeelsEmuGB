@@ -1,7 +1,7 @@
 #include "Filepaths.h"
 
 #ifdef _DEBUG
-const std::string Filepaths::workingDir = "../../..";
+const std::string Filepaths::workingDir = "..";
 #else
 const std::string Filepaths::workingDir = ".";
 #endif

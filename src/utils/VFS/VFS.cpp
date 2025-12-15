@@ -490,3 +490,9 @@ std::string VFS::GetParentPath(const std::string& path)
 
     return "";
 }
+
+bool VFS::IsDirectory(const std::string& path)
+{
+    // Cheating over here
+    return GetExtension(path) == "" ? true : false;
+}
