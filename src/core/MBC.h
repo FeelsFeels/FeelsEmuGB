@@ -7,7 +7,7 @@ public:
 	NoMBC(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
 	~NoMBC();
 
-	void Read(Address address) override;
+	uint8_t Read(Address address) override;
 	void Write(Address address) override;
 };
 
@@ -17,7 +17,7 @@ public:
 	MBC1(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
 	~MBC1();
 
-	void Read(Address address) override;
+	uint8_t Read(Address address) override;
 	void Write(Address address) override;
 };
 
@@ -27,7 +27,7 @@ public:
 	MBC2(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
 	~MBC2();
 
-	void Read(Address address) override;
+	uint8_t Read(Address address) override;
 	void Write(Address address) override;
 };
 
@@ -37,7 +37,7 @@ public:
 	MBC3(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
 	~MBC3();
 
-	void Read(Address address) override;
+	uint8_t Read(Address address) override;
 	void Write(Address address) override;
 };
 
@@ -47,7 +47,7 @@ public:
 	MBC5(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
 	~MBC5();
 
-	void Read(Address address) override;
+	uint8_t Read(Address address) override;
 	void Write(Address address) override;
 };
 
@@ -59,6 +59,6 @@ public:
 	InvalidMBC(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
 	~InvalidMBC();
 
-	void Read(Address address) override;
+	uint8_t Read(Address address) override;
 	void Write(Address address) override;
 };

@@ -1,5 +1,5 @@
 #pragma once
-#include "MMU.h"
+#include "Bus.h"
 #include "Cartridge.h"
 
 #include <memory>
@@ -19,5 +19,7 @@ private:
 	std::string pathToCartridge;
 	std::shared_ptr<Cartridge> cart;
 
-	MMU bus;
+	Bus bus;
+	CPU cpu;
+	PPU ppu;
 };

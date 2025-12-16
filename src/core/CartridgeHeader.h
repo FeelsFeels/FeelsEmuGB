@@ -290,6 +290,7 @@ struct CartridgeInfo
     bool hasBattery;
     bool hasTimer;
     //bool hasRumble;
+    bool cgbFlag = false;
 
 
     // Nice to have. Might support next time.

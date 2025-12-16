@@ -11,6 +11,24 @@ Tester ROMs
 https://github.com/retrio/gb-test-roms
 
 
+
+==============================
+====== Design Decisions ======
+==============================
+My emulator is built with the goal of helping myself (and others!) better understand the Game Boy.
+I want lots of debug info. I want the ability to inspect the values. I want the user to KNOW what is happening under the hood.
+I want to implement the scrolling visualizer just like the Ultimate Game Boy Talk displayed.
+I want a sound visualizer as well.
+
+
+Components:
+Game Boy
+CPU
+Bus/MMU
+PPU
+Cartridge
+
+
 ====================
 ====== NOTES =======
 ====================
@@ -32,6 +50,30 @@ FFFF	FFFF	Interrupt Enable register (IE)
 
 On the Memory Bank Controller (MBC):
 https://retrocomputing.stackexchange.com/questions/11732/how-does-the-gameboys-memory-bank-switching-work
+
+
+On "Registers":
+The CPU has registers, but the docs also mention the cartridge having registers.
+The registers of the cartridge are better thought of as control switches than the standard definition of registers on the CPU.
+
+On CPU Registers:
+7 General 8-bit registers: A B C D E H L
+Some registers can be combined to make 16 bit registers: AF, BC, DE, HL
+A refers to Hi bits of AF. F is the flags register.
+A register is special. It is the accumulator. The only register that can be used for certain load instructions.
+HL register is usually the only register that can be used for addresses when accessing memory.
+
+Two more registers, SP & PC, for stack and program pointer.
+
+
+
+On the Boot ROM:
+Exists in 0000-00FF. Recall that the entry point of the cartridge is 0100-0103.
+This small program, the boot ROM, is burned inside the CPU, and is mapped over (overlapped) the cartridge ROM on startup.
+This means that the boot ROM supercedes the cartridge code inside 0000-00FF until it finishes.
+After finishing, the boot ROM hands off control to the cartridge at 0x0100.
+
+
 
 
 

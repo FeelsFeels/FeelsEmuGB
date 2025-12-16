@@ -10,7 +10,7 @@ public:
 	Cartridge(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
 	~Cartridge();
 
-	virtual void Read(Address address) = 0;
+	virtual uint8_t Read(Address address) = 0;
 	virtual void Write(Address address) = 0;
 
 	void LoadRAM(std::vector<uint8_t> ramData);

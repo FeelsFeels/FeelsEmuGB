@@ -70,7 +70,7 @@ CartridgeInfo Cartridge::ParseCartridgeHeader(const std::vector<uint8_t>& romDat
 	// Title
 	// These bytes contain the title of the game in upper case ASCII. If the title is less than 16 characters long, the remaining bytes should be padded with $00s.
 	const char* rawTitle = reinterpret_cast<const char*>(romData.data() + CartridgeHeaderAddresses::TITLE.start);
-	std::string tempTitle(rawTitle, strnlen(rawTitle, CartridgeHeaderAddresses::TITLE.size()));
+	std::string tempTitle(rawTitle, strnlen(rawTitle, CartridgeHeaderAddresses::TITLE.Size()));
 	for (auto& c : tempTitle)
 	{
 		if (!std::isprint(static_cast<unsigned char>(c)))
