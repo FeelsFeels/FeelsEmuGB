@@ -20,15 +20,15 @@ public:
 	void AttachCartridge(Cartridge* cart);
 	void RemoveCartridge();
 
-	void AttachCPU(CPU* p) { cpu = p; };
-	void AttachPPU(PPU* p) { ppu = p; };
+	//void AttachCPU(CPU* p) { cpu = p; };
+	//void AttachPPU(PPU* p) { ppu = p; };
 
 	void RunBootRom();
 
 private:
 	Cartridge* cartridge;
-	CPU* cpu;
-	PPU* ppu;
+	PPU ppu;
+	//CPU* cpu;
 
 	bool cgbMode = false;
 	bool bootRomEnabled = true;

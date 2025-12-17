@@ -2,7 +2,7 @@
 
 GameBoy::GameBoy()
 {
-	
+	cpu.AttachBus(&bus);
 }
 
 GameBoy::~GameBoy()

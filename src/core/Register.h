@@ -51,6 +51,7 @@ struct Registers
 
     // Helpers
     
+
     // For flags, only the top 4 bits are used.
     void SetFlags(uint8_t data)
     {

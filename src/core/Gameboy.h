@@ -21,5 +21,4 @@ private:
 
 	Bus bus;
 	CPU cpu;
-	PPU ppu;
 };

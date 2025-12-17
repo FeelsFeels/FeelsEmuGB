@@ -65,6 +65,21 @@ HL register is usually the only register that can be used for addresses when acc
 
 Two more registers, SP & PC, for stack and program pointer.
 
+On CPU Flags:
+Documentation for the Half-carry flag for 16 bit additions
+http://www.z80.info/z80code.htm
+                        16 bit ADC group
+
+The 16 bit ADC instructions use the HL register instead of the  A
+register. The flags are affected as follows
+
+C or carry flag          1 if answer >65536 else 0
+Z or zero flag           1 if result = 0 else 0
+P flag                   1 if TC <-32768 or >32767 else 0
+S or sign flag           1 if 32767 < n < 65536 else 0
+N flag                   0
+H or half carry flag     1 if carry from bit 11 else 0
+
 
 
 On the Boot ROM:
