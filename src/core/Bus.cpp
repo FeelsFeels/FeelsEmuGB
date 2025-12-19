@@ -61,31 +61,34 @@ uint8_t Bus::Read(Address addr)
 
 	if (addrCart.Contains(addr))
 	{
-		
+		return cartridge->Read(addr);
 	}
 	else if (addrVRAM.Contains(addr))
 	{
-
+		// return ppu.ReadVRAM(addr); // TODO: Connect PPU later
+		return 0xFF;
 	}
 	else if (addrExtRAM.Contains(addr))
 	{
-
+		return cartridge->Read(addr); // MBC inside cartridge handles read
 	}
 	else if (addrWRAM.Contains(addr))
 	{
 		if (cgbMode && AddressRange::InRange(0xD000, 0xDFFF, addr))
 		{
 			// Switchable bank 1-7
+			ASSERT(false, "CGB unsupported")
 		}
-
+		return wram[addr & 0x1FFF];
 	}
 	else if (addrEchoRAM.Contains(addr))
 	{
-
+		return wram[addr & 0x1FFF];
 	}
 	else if (addrOAM.Contains(addr))
 	{
-
+		// return ppu.ReadOAM(addr); // TODO: Connect PPU later
+		return 0xFF;
 	}
 	else if (addrUnused.Contains(addr))
 	{
@@ -93,15 +96,16 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrIO.Contains(addr))
 	{
-
+		// TODO: Redirect to Timer, Audio, PPU, etc.
+		return io[addr & 0x7F];
 	}
 	else if (addrHRAM.Contains(addr))
 	{
-
+		return hram[addr & 0x7F];
 	}
 	else if (addrIE.Contains(addr))
 	{
-
+		return io[0x7F];
 	}
 
 	return 0xFF;
@@ -116,39 +120,43 @@ void Bus::Write(Address addr, uint8_t data)
 
 	if (addrCart.Contains(addr))
 	{
-
+		cartridge->Write(addr, data);
 	}
 	else if (addrVRAM.Contains(addr))
 	{
-
+		// ppu.WriteVRAM(addr, data);
 	}
 	else if (addrExtRAM.Contains(addr))
 	{
-
+		cartridge->Write(addr, data);
 	}
 	else if (addrWRAM.Contains(addr))
 	{
-		if (cgbMode && AddressRange::InRange(0xD000, 0xDFFF, addr))
-		{
-			// Switchable bank 1-7
-		}
-
+		wram[addr & 0x1FFF] = data;
 	}
 	else if (addrEchoRAM.Contains(addr))
 	{
-
+		wram[addr & 0x1FFF] = data;
 	}
 	else if (addrOAM.Contains(addr))
 	{
-
+		// ppu.WriteOAM(addr, data);
 	}
 	else if (addrUnused.Contains(addr))
 	{
-
+		// Do no thing
 	}
 	else if (addrIO.Contains(addr))
 	{
+		// --- TEST ROM OUTPUT STUB ---
+		// Blargg's test ROMs write characters to 0xFF01
+		if (addr == 0xFF01)
+		{
+			printf("%c", data);
+		}
+		// ----------------------------
 
+		io[addr & 0x7F] = data;
 		if (addr == 0xFF50)
 		{
 			bootRomEnabled = false;
@@ -157,11 +165,11 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrHRAM.Contains(addr))
 	{
-
+		hram[addr & 0x7F] = data;
 	}
 	else if (addrIE.Contains(addr))
 	{
-
+		io[0x7F] = data;
 	}
 
 

@@ -9,7 +9,11 @@ class Bus; //Forward decl
 class CPU
 {
 public:
+	CPU();
+
 	void AttachBus(Bus* p) { bus = p; }
+	void ResetRegisters();
+	int Step();
 
 private:
 	//enum OperandType { REG_A, REG_B, IMM8, ADDR_HL, ... };
@@ -19,6 +23,8 @@ private:
 	//	OperandType dst;
 	//	OperandType src;
 	//};
+	friend class DebugInfo;
+
 	struct Instruction
 	{
 		void (CPU::*execute)();
@@ -35,6 +41,8 @@ private:
 	std::vector<Instruction> instructions;
 	std::vector<CBInstruction> cbInstructions;
 
+	int totalCyclesForInstruction;
+	uint8_t lastInstruction;	// honestly just for debug purposes;
 
 	Bus* bus;
 	Registers reg;

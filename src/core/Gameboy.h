@@ -15,7 +15,11 @@ public:
 	const CartridgeInfo& GetCartInfo() const;
 	const std::string& GetCartPath() const { return pathToCartridge; };
 
+	void Update();
+
 private:
+	friend class DebugInfo;
+
 	std::string pathToCartridge;
 	std::shared_ptr<Cartridge> cart;
 

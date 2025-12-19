@@ -98,7 +98,7 @@ int main(int argc, char* argv[])
         // GAMEBOY RENDERING HERE
         // Run CPU for 1 frame
         // Update Texture with PPU pixels
-
+        gameboy.Update();
 
         // Rendering
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);

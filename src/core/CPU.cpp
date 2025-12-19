@@ -1,6 +1,42 @@
 #include "CPU.h"
 #include "Bus.h"
 
+CPU::CPU()
+{
+    RegisterInstructions();
+}
+
+void CPU::ResetRegisters()
+{
+    reg.a = 0x01;
+    reg.SetZ(1); reg.SetN(0); reg.SetH(false); reg.SetC(false); // TODO: H and C dependant on header checksum
+    reg.b = 0x00;
+    reg.c = 0x13;
+    reg.d = 0x00;
+    reg.e = 0xD8;
+    reg.h = 0x01;
+    reg.l = 0x4D;
+    reg.pc = 0x0100;
+    reg.sp = 0xFFFE;
+}
+
+int CPU::Step()
+{
+    uint8_t opcode = bus->Read(reg.pc++);
+
+    totalCyclesForInstruction = 0;
+
+    instructions[opcode].execute;
+    totalCyclesForInstruction += instructions[opcode].cycles;   //CB instruction increments inside OP_CB()
+
+    lastInstruction = opcode;
+    
+    char hex_output[3];
+    sprintf(hex_output, "%02X", opcode);
+    std::cout << hex_output << " ";
+
+    return totalCyclesForInstruction;
+}
 
 // Helpers
 uint8_t CPU::FetchByte()

@@ -88,7 +88,7 @@ bool RomBrowser::Draw(std::string* outPath)
     return fileSelected;
 }
 
-void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
+void CartInfo::Draw(GameBoy& gb, ImGuiIO& io)
 {
     if (!isVisible) return;
 
@@ -112,6 +112,18 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
 
 }
 
+void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
+{
+    if (!isVisible) return;
+
+    if (ImGui::Begin("CPU Info", &isVisible))
+    {
+        ImGui::Text("PC: %04X", gb.cpu.reg.pc);
+        ImGui::Text("SP: %04X", gb.cpu.reg.sp);
+        ImGui::Text("Last OP: %02X", gb.cpu.lastInstruction);
+    }
+    ImGui::End();
+}
 
 void Editor::Render(GameBoy& gb)
 {
@@ -138,6 +150,7 @@ void Editor::Render(GameBoy& gb)
 	}
 
     debugInfo.Draw(gb, io);
+    cartInfo.Draw(gb, io);
 
 
     ImGui::Render();

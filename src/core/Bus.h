@@ -34,7 +34,8 @@ private:
 	bool bootRomEnabled = true;
 
 	std::array<uint8_t, 8192> wram;
-
+	std::array<uint8_t, 127> hram;
+	std::array<uint8_t, 128> io;
 
 	static constexpr AddressRange addrCart		  { 0x0000, 0x7FFF };
 	static constexpr AddressRange addrVRAM		  { 0x8000, 0x9FFF };

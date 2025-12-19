@@ -11,7 +11,7 @@ public:
 	~Cartridge();
 
 	virtual uint8_t Read(Address address) = 0;
-	virtual void Write(Address address) = 0;
+	virtual void Write(Address address, uint8_t val) = 0;
 
 	void LoadRAM(std::vector<uint8_t> ramData);
 

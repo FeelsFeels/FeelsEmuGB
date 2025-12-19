@@ -20,6 +20,12 @@ struct RomBrowser
 	bool Draw(std::string* outPath);
 };
 
+struct CartInfo
+{
+	bool isVisible = true;
+	void Draw(GameBoy& gb, ImGuiIO& io);
+};
+
 struct DebugInfo
 {
 	bool isVisible = true;
@@ -36,7 +42,7 @@ public:
 
 
 private:
-
 	DebugInfo debugInfo;
+	CartInfo cartInfo;
 	RomBrowser romBrowser;
 };

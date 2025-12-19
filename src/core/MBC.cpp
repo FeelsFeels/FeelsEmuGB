@@ -12,7 +12,7 @@ uint8_t InvalidMBC::Read(Address address)
 	return 0xFF;
 }
 
-void InvalidMBC::Write(Address address)
+void InvalidMBC::Write(Address address, uint8_t val)
 {
 	
 }
@@ -31,7 +31,7 @@ uint8_t NoMBC::Read(Address address)
 	return rom[address];
 }
 
-void NoMBC::Write(Address address)
+void NoMBC::Write(Address address, uint8_t val)
 {
 
 }
@@ -48,7 +48,7 @@ uint8_t MBC1::Read(Address address)
 	return rom[address];
 }
 
-void MBC1::Write(Address address)
+void MBC1::Write(Address address, uint8_t val)
 {
 
 }
@@ -67,7 +67,7 @@ uint8_t MBC2::Read(Address address)
 	return rom[address];
 }
 
-void MBC2::Write(Address address)
+void MBC2::Write(Address address, uint8_t val)
 {
 
 }
@@ -86,7 +86,7 @@ uint8_t MBC3::Read(Address address)
 	return rom[address];
 }
 
-void MBC3::Write(Address address)
+void MBC3::Write(Address address, uint8_t val)
 {
 
 }
@@ -105,7 +105,7 @@ uint8_t MBC5::Read(Address address)
 	return rom[address];
 }
 
-void MBC5::Write(Address address)
+void MBC5::Write(Address address, uint8_t val)
 {
 
 }

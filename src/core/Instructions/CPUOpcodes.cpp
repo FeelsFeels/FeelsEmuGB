@@ -2,6 +2,7 @@
 #include "../Bus.h"
 
 
+
 void CPU::RegisterInstructions()
 {
     instructions.resize(256);
@@ -633,13 +634,7 @@ RESET(OP_FF, 0x38)
 void CPU::OP_CB()
 {
     uint8_t cb_op = FetchByte();
-
-    // Add the cycles from our data table
-    // (We add them here because OP_CB already consumed 4 cycles, 
-    // and the specific bit op adds more)
-    // Note: If your step() function handles the '4' for OP_CB separately, 
-    // you might need to adjust this.
-    // cycles += cbInstructions[cb_op].cycles; 
+    totalCyclesForInstruction += cbInstructions[cb_op].cycles; 
 
     uint8_t reg_idx = cb_op & 0x07;
     uint8_t op_idx = (cb_op >> 3) & 0x1F;
