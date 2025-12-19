@@ -1,4 +1,8 @@
 #pragma once
+
+using ByteRegister = uint8_t;
+using WordRegister = uint16_t;
+
 struct Registers
 {
     // AF Pair
@@ -6,10 +10,10 @@ struct Registers
     {
         struct
         {
-            uint8_t f; // Low byte
-            uint8_t a; // High byte
+            ByteRegister f; // Low byte
+            ByteRegister a; // High byte
         };
-        uint16_t af;
+        WordRegister af;
     };
 
     // BC Pair
@@ -17,10 +21,10 @@ struct Registers
     {
         struct
         {
-            uint8_t c;
-            uint8_t b;
+            ByteRegister c;
+            ByteRegister b;
         };
-        uint16_t bc;
+        WordRegister bc;
     };
 
     // DE Pair
@@ -28,10 +32,10 @@ struct Registers
     {
         struct
         {
-            uint8_t e;
-            uint8_t d;
+            ByteRegister e;
+            ByteRegister d;
         };
-        uint16_t de;
+        WordRegister de;
     };
 
     // HL Pair
@@ -39,18 +43,17 @@ struct Registers
     {
         struct
         {
-            uint8_t l;
-            uint8_t h;
+            ByteRegister l;
+            ByteRegister h;
         };
-        uint16_t hl;
+        WordRegister hl;
     };
 
-    uint16_t sp;
-    uint16_t pc;
+    WordRegister sp;
+    WordRegister pc;
 
 
     // Helpers
-    
 
     // For flags, only the top 4 bits are used.
     void SetFlags(uint8_t data)

@@ -3,6 +3,10 @@ https://gbdev.io/pandocs/
 
 Opcode table
 https://gbdev.io/gb-opcodes/optables/
+https://izik1.github.io/gbops/
+
+CPU Instructions reference
+https://rgbds.gbdev.io/docs/v1.0.0/gbz80.7
 
 The Ultimate GameBoy Talk
 https://www.youtube.com/watch?v=HyzD8pNlpwI
@@ -65,6 +69,16 @@ HL register is usually the only register that can be used for addresses when acc
 
 Two more registers, SP & PC, for stack and program pointer.
 
+
+On Opcodes / execution:
+Similar to what an OS module would have taught.
+All n and a and e parameters come from the bytes immediately following the opcode in memory.
+Memory:
+[PC]     -> 0x3E        (opcode for LD A, n8)
+[PC+1]   -> 0x42        (the n8 value = 66)
+[PC+2]   -> next opcode
+
+
 On CPU Flags:
 Documentation for the Half-carry flag for 16 bit additions
 http://www.z80.info/z80code.htm
@@ -80,6 +94,10 @@ S or sign flag           1 if 32767 < n < 65536 else 0
 N flag                   0
 H or half carry flag     1 if carry from bit 11 else 0
 
+One more edge case:
+Opcode 0xE8, ADD SP,e8
+H-flag set when bit 3 overflows to bit 4
+https://stackoverflow.com/questions/57958631/game-boy-half-carry-flag-and-16-bit-instructions-especially-opcode-0xe8
 
 
 On the Boot ROM:

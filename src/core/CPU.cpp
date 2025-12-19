@@ -1,5 +1,105 @@
 #include "CPU.h"
+#include "Bus.h"
 
+
+// Helpers
+uint8_t CPU::FetchByte()
+{
+    return bus->Read(reg.pc++);
+}
+
+uint16_t CPU::FetchWord()
+{
+    uint8_t lo = bus->Read(reg.pc++);
+    uint8_t hi = bus->Read(reg.pc++);
+    return (hi << 8) | lo;
+}
+
+uint8_t CPU::PopByte()
+{
+    return bus->Read(reg.sp++);
+}
+
+uint16_t CPU::PopWord()
+{
+    uint16_t lo = bus->Read(reg.sp++);
+    uint16_t hi = bus->Read(reg.sp++);
+    return (hi << 8) | lo;
+}
+
+void CPU::PushByte(uint8_t val)
+{
+    bus->Write(reg.sp--, val);
+}
+
+void CPU::PushWord(uint16_t val)
+{
+    uint8_t hi = (val >> 8) & 0xFF;
+    uint8_t lo = val & 0xFF;
+
+    bus->Write(reg.sp--, hi);
+    bus->Write(reg.sp--, lo);
+}
+
+
+
+// My favourite instruction
+void CPU::NOP()
+{
+    // im thinking migu migu oo ee oo
+}
+
+void CPU::INVALID()
+{
+    ASSERT(false, "HEY THE ROM'S BROKEN");
+}
+
+// Loads
+void CPU::LD_r8_n8(ByteRegister& dst, uint8_t value)
+{
+    dst = value;
+}
+
+void CPU::LD_r8_r8(ByteRegister& dst, const ByteRegister& value)
+{
+    dst = value;
+}
+
+void CPU::LD_r8_addr(ByteRegister & dst, const WordRegister& addr)
+{
+    dst = bus->Read(addr);
+}
+
+void CPU::LD_addr_r8(const WordRegister& addr, const ByteRegister& value)
+{
+    bus->Write(addr, value);
+}
+
+void CPU::LD_addr_SP(const WordRegister& addr)
+{
+    bus->Write(addr, reg.sp);
+}
+
+void CPU::LD_r16_n16(WordRegister& dst, uint16_t value)
+{
+    dst = value;
+}
+
+void CPU::LD_HL_SP_e8(int8_t val)
+{
+    int16_t sp = static_cast<int16_t>(reg.sp);
+    uint8_t unsigned_val = static_cast<uint8_t>(val);   // Casting for calculation of flags
+
+    reg.SetZ(0);
+    reg.SetN(0);
+    // Special case: the gameboy checks H and C flags as if doing unsigned addition.
+    reg.SetH(((sp & 0x0F) + (unsigned_val & 0x0F)) > 0x0F);
+    reg.SetC(((sp & 0xFF) + unsigned_val) > 0xFF);
+
+    reg.hl = sp + val;
+}
+
+// Arithmetic
 void CPU::ADD(uint8_t val)
 {
     uint16_t result = reg.a + val;
@@ -8,6 +108,19 @@ void CPU::ADD(uint8_t val)
     reg.SetN(false);                                // Subtraction
     reg.SetH((reg.a & 0x0F) + (val & 0x0F) > 0x0F); // Half carry
     reg.SetC(result > 0xFF);                        // Carry
+
+    reg.a = result & 0xFF;
+}
+
+void CPU::ADDC(uint8_t val)
+{
+    uint8_t carry = reg.GetC() ? 1 : 0;
+    uint16_t result = reg.a + val + carry;
+
+    reg.SetZ((result & 0xFF) == 0);
+    reg.SetN(false);
+    reg.SetH((reg.a & 0x0F) + (val & 0x0F) + carry > 0x0F); // Sum of nibbles > 0xF
+    reg.SetC(result > 0xFF);
 
     reg.a = result & 0xFF;
 }
@@ -24,6 +137,19 @@ void CPU::SUB(uint8_t val)
     reg.a = result & 0xFF;
 }
 
+void CPU::SUBC(uint8_t val)
+{
+    uint8_t carry = reg.GetC() ? 1 : 0;
+    int16_t result = reg.a - val - carry;
+
+    reg.SetZ((result & 0xFF) == 0);
+    reg.SetN(true);
+    reg.SetH(((reg.a & 0x0F) - (val & 0x0F) - carry) < 0); // (LowerNibble(A) - LowerNibble(Val) - Carry) < 0
+    reg.SetC(result < 0);
+
+    reg.a = result & 0xFF;
+}
+
 void CPU::ADD_HL(uint16_t val)
 {
     uint32_t result = reg.hl + val;
@@ -32,5 +158,334 @@ void CPU::ADD_HL(uint16_t val)
     reg.SetN(false);
     reg.SetH((reg.hl & 0x0FFF) + (val & 0x0FFF) > 0x0FFF); // Bit 11->12 overflow for 16 bit adds
     reg.SetC(result > 0xFFFF);
+
     reg.hl = result & 0xFFFF;
 }
+
+void CPU::ADD_SP_e8(int8_t val)
+{
+    int16_t sp = static_cast<int16_t>(reg.sp);
+    uint8_t unsigned_val = static_cast<uint8_t>(val);   // Casting for calculation of flags
+
+    reg.SetZ(0);
+    reg.SetN(0);
+    // Special case: the gameboy checks H and C flags as if doing unsigned addition.
+    reg.SetH(((sp & 0x0F) + (unsigned_val & 0x0F)) > 0x0F);
+    reg.SetC(((sp & 0xFF) + unsigned_val) > 0xFF);
+
+    reg.sp = sp + val;
+}
+
+void CPU::CMP(uint8_t val)
+{
+    uint16_t result = reg.a - val;
+
+    reg.SetZ((result & 0xFF) == 0);          // Zero
+    reg.SetN(true);                          // Subtraction
+    reg.SetH((reg.a & 0x0F) < (val & 0x0F)); // Half carry
+    reg.SetC(reg.a < val);                   // Carry
+}
+
+void CPU::INC_r8(ByteRegister& dst)
+{
+    ++dst;
+    
+    reg.SetZ(dst == 0);
+    reg.SetN(false);
+    reg.SetH((dst & 0x0F) == 0x00); // If lower nibble is 0, there must have been a 0x0F -> 0x10 carry over
+}
+
+void CPU::INC_r16(WordRegister& dst)
+{
+    ++dst;
+}
+
+void CPU::DEC_r8(ByteRegister & dst)
+{
+    dst--;
+
+    reg.SetZ(dst == 0);
+    reg.SetN(true);
+    reg.SetH((dst & 0x0F) == 0x0F);
+}
+
+void CPU::DEC_r16(WordRegister& dst)
+{
+    --dst;
+}
+
+
+// Bitwise 
+void CPU::AND(uint8_t val)
+{
+    reg.a &= val;
+    
+    reg.SetZ(reg.a == 0);
+    reg.SetN(false);
+    reg.SetH(true);
+    reg.SetC(false);
+}
+
+void CPU::OR(uint8_t val)
+{
+    reg.a |= val;
+
+    reg.SetZ(reg.a == 0);
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC(false);
+}
+
+void CPU::XOR(uint8_t val)
+{
+    reg.a ^= val;
+
+    reg.SetZ(reg.a == 0);
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC(false);
+}
+
+void CPU::CPL()
+{
+    reg.a = ~reg.a;
+    reg.SetN(true);
+    reg.SetH(true);
+}
+
+// Carry flag instructions
+void CPU::CCF()
+{
+    reg.SetC(!reg.GetC());
+    reg.SetN(false);
+    reg.SetH(false);
+}
+
+void CPU::SCF()
+{
+    reg.SetC(true);
+    reg.SetN(false);
+    reg.SetH(false);
+}
+
+// Bit shifts and rotates
+void CPU::RL(ByteRegister& dst)
+{
+    bool oldCarry = reg.GetC();
+
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC((dst & 0x80) == 0x80);
+    
+    dst <<= 1;
+    dst += oldCarry;
+
+    reg.SetZ(dst == 0);
+}
+
+void CPU::RLC(ByteRegister& dst)
+{
+    bool first = dst & 0x80;
+
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC(first);
+
+    dst <<= 1;
+    dst += first;
+
+    reg.SetZ(dst == 0);
+}
+
+void CPU::RR(ByteRegister& dst)
+{
+    bool oldCarry = reg.GetC();
+
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC((dst & 0x01) == 0x01);
+
+    dst >>= 1;
+    if (oldCarry) dst |= 0x80;
+
+    reg.SetZ(dst == 0);
+}
+
+void CPU::RRC(ByteRegister & dst)
+{
+    bool last = dst & 0x01;
+
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC(last);
+
+    dst >>= 1;
+    if (last) dst |= 0x80;
+
+    reg.SetZ(dst == 0);
+}
+
+void CPU::SLA(ByteRegister& dst)
+{
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC((dst & 0x80) == 0x80);
+
+    dst <<= 1;
+
+    reg.SetZ(dst == 0);
+}
+
+void CPU::SRA(ByteRegister& dst)
+{
+    bool bit7 = (dst & 0x80);  // Save the sign bit
+
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC((dst & 0x01) == 0x01);
+
+    dst >>= 1;
+    if (bit7) dst |= 0x80;
+
+    reg.SetZ(dst == 0);
+}
+
+void CPU::SRL(ByteRegister& dst)
+{
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC((dst & 0x01) == 0x01);
+
+    dst >>= 1;
+
+    reg.SetZ(dst == 0);
+}
+
+void CPU::SWAP(ByteRegister& dst)
+{
+    ByteRegister hi = (dst & 0xF0) >> 4;
+    ByteRegister lo = (dst & 0x0F) << 4;
+    dst = hi | lo;
+
+    reg.SetZ(dst == 0);
+    reg.SetN(false);
+    reg.SetH(false);
+    reg.SetC(false);
+}
+
+// Bit flag instructions
+void CPU::BIT(uint8_t bit, const ByteRegister& r)
+{
+    uint8_t test = 1 << bit;
+
+    reg.SetZ((r & test) == 0);
+    reg.SetN(0);
+    reg.SetH(1);
+}
+
+void CPU::BIT_addr(uint8_t bit, const WordRegister& addr)
+{
+    uint8_t test = 1 << bit;
+
+    reg.SetZ((bus->Read(addr) & test) == 0);
+    reg.SetN(0);
+    reg.SetH(1);
+}
+
+void CPU::SET(uint8_t bit, ByteRegister & dst)
+{
+    uint8_t set = 1 << bit;
+    dst |= set;
+}
+
+void CPU::RES(uint8_t bit, ByteRegister & dst)
+{
+    uint8_t set = ~(1 << bit);
+    dst &= set;
+}
+
+
+// Jumps
+void CPU::JP(const WordRegister& addr)
+{
+    reg.pc = addr;
+}
+
+void CPU::JR(int8_t addr)
+{
+    reg.pc += addr;
+}
+
+void CPU::CALL(Address addr)
+{
+    PushWord(reg.pc);
+
+    reg.pc = addr;
+}
+
+void CPU::RET()
+{
+    reg.pc = PopWord();
+}
+
+void CPU::RST(Address vector)
+{
+    // Only either 00, 08, 10, 18
+    //             20, 28, 30, 38
+    PushWord(reg.pc);
+    reg.pc = vector;
+}
+
+
+// Interrupts
+void CPU::DI()
+{
+    ime = false;
+}
+
+void CPU::EI()
+{
+    imeNext = true;
+}
+
+void CPU::HALT()
+{
+    halted = true;
+}
+
+
+// Misc
+void CPU::DAA()
+{
+    // Register A holds the result of operations of 2 Binary coded decimals (BCDs)
+    // DAA will adjust the result to be in BCD as well.
+    uint8_t adjustment = 0;
+    if (reg.GetN())
+    {
+        // Subtraction operation
+        if (reg.GetH()) adjustment += 0x06;
+        if (reg.GetC()) adjustment += 0x60;
+        reg.a -= adjustment;
+    }
+    else
+    {
+        if (reg.GetH() || (reg.a & 0x0F) > 0x09) adjustment += 0x06;
+        if (reg.GetC() || (reg.a > 0x99))
+        {
+            adjustment += 0x60;
+            reg.SetC(true); // 40 + 60 = 1 10, overflowed 99.
+        }
+
+        reg.a += adjustment;
+    }
+
+    reg.SetZ(reg.a == 0);
+    reg.SetH(false);
+}
+
+void CPU::STOP()
+{
+    stopped = true;
+}
+
+
