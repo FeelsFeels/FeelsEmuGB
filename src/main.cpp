@@ -20,6 +20,15 @@ int main(int argc, char* argv[])
 {
     VFS::MountDirectory("", Filepaths::roms);
 
+#ifdef GAMEBOY_DOCTOR
+#ifdef _MSC_VER
+    FILE* fp;
+    freopen_s(&fp, "cpu_log.txt", "w", stdout);
+#else
+    freopen("cpu_log.txt", "w", stdout);
+#endif
+#endif
+
 #pragma region Setup
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
@@ -76,6 +85,13 @@ int main(int argc, char* argv[])
 
     // Main Loop
     bool done = false;
+
+#ifdef GAMEBOY_DOCTOR
+    while (!done)
+    {
+        gameboy.Update();
+    }
+#else
     while (!done)
     {
         SDL_Event event;
@@ -93,7 +109,9 @@ int main(int argc, char* argv[])
         ImGui::NewFrame();
 
         // IMGUI CODE
+#ifdef _DEBUG
         editor.Render(gameboy);
+#endif
 
         // GAMEBOY RENDERING HERE
         // Run CPU for 1 frame
@@ -111,6 +129,7 @@ int main(int argc, char* argv[])
         // Swap buffers
         SDL_GL_SwapWindow(window);
     }
+#endif
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

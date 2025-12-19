@@ -9,7 +9,8 @@ CPU::CPU()
 void CPU::ResetRegisters()
 {
     reg.a = 0x01;
-    reg.SetZ(1); reg.SetN(0); reg.SetH(false); reg.SetC(false); // TODO: H and C dependant on header checksum
+    reg.f = 0xB0;
+    //reg.SetZ(1); reg.SetN(0); reg.SetH(false); reg.SetC(false); // TODO: H and C dependant on header checksum
     reg.b = 0x00;
     reg.c = 0x13;
     reg.d = 0x00;
@@ -22,6 +23,43 @@ void CPU::ResetRegisters()
 
 int CPU::Step()
 {
+#ifdef GAMEBOY_DOCTOR
+    // Code for testing via GB doctor
+    // LOG BEFORE EXECUTION (Standard requirement)
+    // Format: A:01 F:B0 B:00 C:13 D:00 E:D8 H:01 L:4D SP:FFFE PC:0100 PCMEM:00,C3,13,02
+
+    // Fetch the 4 bytes at PC for the log (without incrementing PC!)
+    uint8_t pcmem[4];
+    for (int i = 0; i < 4; i++)
+    {
+        pcmem[i] = bus->Read(reg.pc + i);
+    }
+
+    char logBuffer[100];
+    sprintf(logBuffer, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X",
+        reg.a, reg.f, reg.b, reg.c, reg.d, reg.e, reg.h, reg.l, reg.sp, reg.pc,
+        pcmem[0], pcmem[1], pcmem[2], pcmem[3]
+    );
+    std::cout << logBuffer << "\n";
+
+    // EXECUTE
+    uint8_t opCode = bus->Read(reg.pc++);
+    totalCyclesForInstruction = 0;
+
+    if (instructions[opCode].execute)
+    {
+        (this->*instructions[opCode].execute)();
+    }
+    else
+    {
+        std::cout << " [ERROR: Unimplemented Opcode " << std::hex << (int)opCode << "]\n";
+    }
+
+    totalCyclesForInstruction += instructions[opCode].cycles;
+    return totalCyclesForInstruction;
+#endif
+
+
     uint8_t opcode = bus->Read(reg.pc++);
 
     totalCyclesForInstruction = 0;
@@ -31,33 +69,7 @@ int CPU::Step()
 
     lastInstruction = opcode;
     
-
-    //sprintf(hex_output, "%02X", opcode);
-    std::cout
-        << std::hex
-        << std::uppercase
-        << std::setw(2)
-        << std::setfill('0')
-        << static_cast<int>(opcode)
-        << " ";
-
     static int instruction_count = 0;
-    //if (instructionCount++ % 1000 == 0)
-    //{
-    //    printf("PC: 0x%04X, Opcode: 0x%02X\n", reg.pc, opcode);
-    //}
-
-    //if (instruction_count++ % 50 == 0)
-    //{
-    //    printf("\n=== Instruction %d ===\n", instruction_count);
-    //    printf("PC=0x%04X, opcode=0x%02X\n", reg.pc - 1, opcode);
-    //    printf("Registers: A=%02X B=%02X C=%02X D=%02X E=%02X H=%02X L=%02X\n",
-    //        reg.a, reg.b, reg.c, reg.d, reg.e, reg.h, reg.l);
-    //    printf("Flags: Z=%d N=%d H=%d C=%d\n",
-    //        reg.GetZ(), reg.GetN(), reg.GetH(), reg.GetC());
-    //}
-
-
     return totalCyclesForInstruction;
 }
 
@@ -88,7 +100,7 @@ uint16_t CPU::PopWord()
 
 void CPU::PushByte(uint8_t val)
 {
-    bus->Write(reg.sp--, val);
+    bus->Write(--reg.sp, val);
 }
 
 void CPU::PushWord(uint16_t val)
@@ -96,8 +108,8 @@ void CPU::PushWord(uint16_t val)
     uint8_t hi = (val >> 8) & 0xFF;
     uint8_t lo = val & 0xFF;
 
-    bus->Write(reg.sp--, hi);
-    bus->Write(reg.sp--, lo);
+    bus->Write(--reg.sp, hi);
+    bus->Write(--reg.sp, lo);
 }
 
 

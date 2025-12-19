@@ -31,7 +31,7 @@ private:
 	//CPU* cpu;
 
 	bool cgbMode = false;
-	bool bootRomEnabled = true;
+	bool bootRomEnabled = false;
 
 	std::array<uint8_t, 8192> wram;
 	std::array<uint8_t, 127> hram;
