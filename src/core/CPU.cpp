@@ -26,14 +26,37 @@ int CPU::Step()
 
     totalCyclesForInstruction = 0;
 
-    instructions[opcode].execute;
+    (this->*instructions[opcode].execute)();
     totalCyclesForInstruction += instructions[opcode].cycles;   //CB instruction increments inside OP_CB()
 
     lastInstruction = opcode;
     
-    char hex_output[3];
-    sprintf(hex_output, "%02X", opcode);
-    std::cout << hex_output << " ";
+
+    //sprintf(hex_output, "%02X", opcode);
+    std::cout
+        << std::hex
+        << std::uppercase
+        << std::setw(2)
+        << std::setfill('0')
+        << static_cast<int>(opcode)
+        << " ";
+
+    static int instruction_count = 0;
+    //if (instructionCount++ % 1000 == 0)
+    //{
+    //    printf("PC: 0x%04X, Opcode: 0x%02X\n", reg.pc, opcode);
+    //}
+
+    //if (instruction_count++ % 50 == 0)
+    //{
+    //    printf("\n=== Instruction %d ===\n", instruction_count);
+    //    printf("PC=0x%04X, opcode=0x%02X\n", reg.pc - 1, opcode);
+    //    printf("Registers: A=%02X B=%02X C=%02X D=%02X E=%02X H=%02X L=%02X\n",
+    //        reg.a, reg.b, reg.c, reg.d, reg.e, reg.h, reg.l);
+    //    printf("Flags: Z=%d N=%d H=%d C=%d\n",
+    //        reg.GetZ(), reg.GetN(), reg.GetH(), reg.GetC());
+    //}
+
 
     return totalCyclesForInstruction;
 }
@@ -46,8 +69,8 @@ uint8_t CPU::FetchByte()
 
 uint16_t CPU::FetchWord()
 {
-    uint8_t lo = bus->Read(reg.pc++);
-    uint8_t hi = bus->Read(reg.pc++);
+    uint16_t lo = FetchByte();
+    uint16_t hi = FetchByte();
     return (hi << 8) | lo;
 }
 

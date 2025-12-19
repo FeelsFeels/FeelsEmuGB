@@ -118,12 +118,51 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
 
     if (ImGui::Begin("CPU Info", &isVisible))
     {
-        ImGui::Text("PC: %04X", gb.cpu.reg.pc);
-        ImGui::Text("SP: %04X", gb.cpu.reg.sp);
-        ImGui::Text("Last OP: %02X", gb.cpu.lastInstruction);
+        const Registers& r = gb.cpu.reg;
+
+        // --- Program state ---
+        ImGui::Text("PC: %04X", r.pc);
+        ImGui::Text("SP: %04X", r.sp);
+        ImGui::Text("Last OP: %02X", static_cast<int>(gb.cpu.lastInstruction));
+
+        ImGui::Separator();
+
+        // --- 16-bit register pairs ---
+        ImGui::Text("AF: %04X", r.af);
+        ImGui::Text("BC: %04X", r.bc);
+        ImGui::Text("DE: %04X", r.de);
+        ImGui::Text("HL: %04X", r.hl);
+
+        ImGui::Separator();
+
+        // --- 8-bit registers ---
+        ImGui::Text("A: %02X   F: %02X",
+            static_cast<int>(r.a),
+            static_cast<int>(r.f));
+        ImGui::Text("B: %02X   C: %02X",
+            static_cast<int>(r.b),
+            static_cast<int>(r.c));
+        ImGui::Text("D: %02X   E: %02X",
+            static_cast<int>(r.d),
+            static_cast<int>(r.e));
+        ImGui::Text("H: %02X   L: %02X",
+            static_cast<int>(r.h),
+            static_cast<int>(r.l));
+
+        ImGui::Separator();
+
+        // --- Flags ---
+        ImGui::Text("Flags (F): %02X", static_cast<int>(r.f));
+        ImGui::Text("Z: %d   N: %d   H: %d   C: %d",
+            r.GetZ(),
+            r.GetN(),
+            r.GetH(),
+            r.GetC());
     }
+
     ImGui::End();
 }
+
 
 void Editor::Render(GameBoy& gb)
 {

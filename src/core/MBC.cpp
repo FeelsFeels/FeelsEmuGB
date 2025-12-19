@@ -33,7 +33,7 @@ uint8_t NoMBC::Read(Address address)
 
 void NoMBC::Write(Address address, uint8_t val)
 {
-
+	// No op
 }
 
 
@@ -45,12 +45,17 @@ MBC1::~MBC1()
 {}
 uint8_t MBC1::Read(Address address)
 {
-	return rom[address];
+	if (address < 0x4000) return rom[address];
+	if (address < 0x8000) return rom[address];
 }
 
 void MBC1::Write(Address address, uint8_t val)
 {
+	if (address < 0x8000)
+	{
 
+		return;  // Silently ignore
+	}
 }
 
 

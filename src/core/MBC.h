@@ -19,6 +19,11 @@ public:
 
 	uint8_t Read(Address address) override;
 	void Write(Address address, uint8_t val) override;
+
+private:
+	bool romEnabled = false;
+
+
 };
 
 class MBC2 : public Cartridge

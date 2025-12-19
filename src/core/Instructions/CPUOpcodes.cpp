@@ -328,7 +328,6 @@ void CPU::RegisterInstructions()
             cycles = (reg_idx == 6) ? 12 : 8;
         }
 
-        // Generate Debug Name (Optional, but helpful)
         std::string name = "CB " + std::to_string(i);
 
         // Fill table with nullptr for the function, but keep the cycles!
@@ -340,297 +339,341 @@ void CPU::RegisterInstructions()
 
 
 
-// ==========================================================
-// MISC & 16-BIT INSTRUCTIONS (0x00 - 0x3F)
-// ==========================================================
-#define INC_16(op, reg_pair)     void CPU::op() { INC_r16(reg_pair); }
-#define DEC_16(op, reg_pair)     void CPU::op() { DEC_r16(reg_pair); }
-#define LD_16_N(op, reg_pair)    void CPU::op() { reg_pair = FetchWord(); }
-#define ADD_HL_16(op, reg_pair)  void CPU::op() { ADD_HL(reg_pair); }
-
-#define INC_8(op, dst)           void CPU::op() { INC_r8(dst); }
-#define DEC_8(op, dst)           void CPU::op() { DEC_r8(dst); }
-#define LD_8_N(op, dst)          void CPU::op() { LD_r8_n8(dst, FetchByte()); }
-#define INC_MEM(op)              void CPU::op() { uint8_t val = bus->Read(reg.hl); val++; bus->Write(reg.hl, val); reg.SetZ(val==0); reg.SetN(0); reg.SetH((val&0xF)==0); }
-#define DEC_MEM(op)              void CPU::op() { uint8_t val = bus->Read(reg.hl); val--; bus->Write(reg.hl, val); reg.SetZ(val==0); reg.SetN(1); reg.SetH((val&0xF)==0xF); }
-
-
-// Row 0
+// --- 0x00 - 0x0F ---
 void CPU::OP_00() { NOP(); }
-LD_16_N(OP_01, reg.bc)
-void CPU::OP_02() { LD_addr_r8(reg.bc, reg.a); } // LD (BC), A
-INC_16(OP_03, reg.bc)
-INC_8(OP_04, reg.b)
-DEC_8(OP_05, reg.b)
-LD_8_N(OP_06, reg.b)
-void CPU::OP_07() { RLC(reg.a); reg.SetZ(false); } // RLCA (Z is always 0)
+void CPU::OP_01() { reg.bc = FetchWord(); } // LD BC, n16
+void CPU::OP_02() { bus->Write(reg.bc, reg.a); } // LD (BC), A
+void CPU::OP_03() { reg.bc++; } // INC BC
+void CPU::OP_04() { INC_r8(reg.b); }
+void CPU::OP_05() { DEC_r8(reg.b); }
+void CPU::OP_06() { LD_r8_n8(reg.b, FetchByte()); }
+void CPU::OP_07() { RLC(reg.a); reg.SetZ(false); } // RLCA
 
 void CPU::OP_08() { LD_addr_SP(FetchWord()); } // LD (a16), SP
-ADD_HL_16(OP_09, reg.bc)
+void CPU::OP_09() { ADD_HL(reg.bc); }
 void CPU::OP_0A() { LD_r8_addr(reg.a, reg.bc); } // LD A, (BC)
-DEC_16(OP_0B, reg.bc)
-INC_8(OP_0C, reg.c)
-DEC_8(OP_0D, reg.c)
-LD_8_N(OP_0E, reg.c)
-void CPU::OP_0F() { RRC(reg.a); reg.SetZ(false); } // RRCA (Z is always 0)
+void CPU::OP_0B() { reg.bc--; } // DEC BC
+void CPU::OP_0C() { INC_r8(reg.c); }
+void CPU::OP_0D() { DEC_r8(reg.c); }
+void CPU::OP_0E() { LD_r8_n8(reg.c, FetchByte()); }
+void CPU::OP_0F() { RRC(reg.a); reg.SetZ(false); } // RRCA
 
-// Row 1
-void CPU::OP_10() { STOP(); } // Note: Technically consumes an extra 0x00 byte
-LD_16_N(OP_11, reg.de)
-void CPU::OP_12() { LD_addr_r8(reg.de, reg.a); } // LD (DE), A
-INC_16(OP_13, reg.de)
-INC_8(OP_14, reg.d)
-DEC_8(OP_15, reg.d)
-LD_8_N(OP_16, reg.d)
-void CPU::OP_17() { RL(reg.a); reg.SetZ(false); } // RLA (Z is always 0)
+// --- 0x10 - 0x1F ---
+void CPU::OP_10() { STOP(); }
+void CPU::OP_11() { reg.de = FetchWord(); } // LD DE, n16
+void CPU::OP_12() { bus->Write(reg.de, reg.a); } // LD (DE), A
+void CPU::OP_13() { reg.de++; } // INC DE
+void CPU::OP_14() { INC_r8(reg.d); }
+void CPU::OP_15() { DEC_r8(reg.d); }
+void CPU::OP_16() { LD_r8_n8(reg.d, FetchByte()); }
+void CPU::OP_17() { RL(reg.a); reg.SetZ(false); } // RLA
 
-void CPU::OP_18() { JR((int8_t)FetchByte()); } // JR r8
-ADD_HL_16(OP_19, reg.de)
+void CPU::OP_18() { JR((int8_t)FetchByte()); }
+void CPU::OP_19() { ADD_HL(reg.de); }
 void CPU::OP_1A() { LD_r8_addr(reg.a, reg.de); } // LD A, (DE)
-DEC_16(OP_1B, reg.de)
-INC_8(OP_1C, reg.e)
-DEC_8(OP_1D, reg.e)
-LD_8_N(OP_1E, reg.e)
-void CPU::OP_1F() { RR(reg.a); reg.SetZ(false); } // RRA (Z is always 0)
+void CPU::OP_1B() { reg.de--; } // DEC DE
+void CPU::OP_1C() { INC_r8(reg.e); }
+void CPU::OP_1D() { DEC_r8(reg.e); }
+void CPU::OP_1E() { LD_r8_n8(reg.e, FetchByte()); }
+void CPU::OP_1F() { RR(reg.a); reg.SetZ(false); } // RRA
 
-// Row 2
-void CPU::OP_20() { int8_t off = (int8_t)FetchByte(); if (!reg.GetZ()) JR(off); } // JR NZ, r8
-LD_16_N(OP_21, reg.hl)
-void CPU::OP_22() { LD_addr_r8(reg.hl, reg.a); reg.hl++; } // LDI (HL), A
-INC_16(OP_23, reg.hl)
-INC_8(OP_24, reg.h)
-DEC_8(OP_25, reg.h)
-LD_8_N(OP_26, reg.h)
+// --- 0x20 - 0x2F ---
+void CPU::OP_20() { int8_t off = (int8_t)FetchByte(); if (!reg.GetZ()) JR(off); } // JR NZ
+void CPU::OP_21() { reg.hl = FetchWord(); } // LD HL, n16
+void CPU::OP_22() { bus->Write(reg.hl, reg.a); reg.hl++; } // LD (HL+), A
+void CPU::OP_23() { reg.hl++; } // INC HL
+void CPU::OP_24() { INC_r8(reg.h); }
+void CPU::OP_25() { DEC_r8(reg.h); }
+void CPU::OP_26() { LD_r8_n8(reg.h, FetchByte()); }
 void CPU::OP_27() { DAA(); }
 
-void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) JR(off); } // JR Z, r8
-ADD_HL_16(OP_29, reg.hl)
-void CPU::OP_2A() { LD_r8_addr(reg.a, reg.hl); reg.hl++; } // LDI A, (HL)
-DEC_16(OP_2B, reg.hl)
-INC_8(OP_2C, reg.l)
-DEC_8(OP_2D, reg.l)
-LD_8_N(OP_2E, reg.l)
+void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) JR(off); } // JR Z
+void CPU::OP_29() { ADD_HL(reg.hl); }
+void CPU::OP_2A() { LD_r8_addr(reg.a, reg.hl); reg.hl++; } // LD A, (HL+)
+void CPU::OP_2B() { reg.hl--; } // DEC HL
+void CPU::OP_2C() { INC_r8(reg.l); }
+void CPU::OP_2D() { DEC_r8(reg.l); }
+void CPU::OP_2E() { LD_r8_n8(reg.l, FetchByte()); }
 void CPU::OP_2F() { CPL(); }
 
-// Row 3
-void CPU::OP_30() { int8_t off = (int8_t)FetchByte(); if (!reg.GetC()) JR(off); } // JR NC, r8
-LD_16_N(OP_31, reg.sp)
-void CPU::OP_32() { LD_addr_r8(reg.hl, reg.a); reg.hl--; } // LDD (HL), A
-INC_16(OP_33, reg.sp)
-INC_MEM(OP_34) // INC (HL) - Difficult one, handled by macro
-DEC_MEM(OP_35) // DEC (HL)
-void CPU::OP_36() { uint8_t val = FetchByte(); bus->Write(reg.hl, val); }
+// --- 0x30 - 0x3F ---
+void CPU::OP_30() { int8_t off = (int8_t)FetchByte(); if (!reg.GetC()) JR(off); } // JR NC
+void CPU::OP_31() { reg.sp = FetchWord(); } // LD SP, n16
+void CPU::OP_32() { bus->Write(reg.hl, reg.a); reg.hl--; } // LD (HL-), A
+void CPU::OP_33() { reg.sp++; } // INC SP
+void CPU::OP_34()
+{ // INC (HL)
+    uint8_t val = bus->Read(reg.hl);
+    val++;
+    bus->Write(reg.hl, val);
+    reg.SetZ(val == 0); reg.SetN(false); reg.SetH((val & 0x0F) == 0);
+}
+void CPU::OP_35()
+{ // DEC (HL)
+    uint8_t val = bus->Read(reg.hl);
+    val--;
+    bus->Write(reg.hl, val);
+    reg.SetZ(val == 0); reg.SetN(true); reg.SetH((val & 0x0F) == 0x0F);
+}
+void CPU::OP_36() { bus->Write(reg.hl, FetchByte()); } // LD (HL), n8
 void CPU::OP_37() { SCF(); }
 
-void CPU::OP_38() { int8_t off = (int8_t)FetchByte(); if (reg.GetC()) JR(off); } // JR C, r8
-ADD_HL_16(OP_39, reg.sp)
-void CPU::OP_3A() { LD_r8_addr(reg.a, reg.hl); reg.hl--; } // LDD A, (HL)
-DEC_16(OP_3B, reg.sp)
-INC_8(OP_3C, reg.a)
-DEC_8(OP_3D, reg.a)
-LD_8_N(OP_3E, reg.a)
+void CPU::OP_38() { int8_t off = (int8_t)FetchByte(); if (reg.GetC()) JR(off); } // JR C
+void CPU::OP_39()
+{
+    ADD_HL(reg.sp); // Note: ADD HL, SP
+}
+void CPU::OP_3A() { LD_r8_addr(reg.a, reg.hl); reg.hl--; } // LD A, (HL-)
+void CPU::OP_3B() { reg.sp--; } // DEC SP
+void CPU::OP_3C() { INC_r8(reg.a); }
+void CPU::OP_3D() { DEC_r8(reg.a); }
+void CPU::OP_3E() { LD_r8_n8(reg.a, FetchByte()); }
 void CPU::OP_3F() { CCF(); }
 
-#undef INC_16
-#undef DEC_16
-#undef LD_16_N
-#undef ADD_HL_16
-#undef INC_8
-#undef DEC_8
-#undef LD_8_N
-#undef INC_MEM
-#undef DEC_MEM
+// --- 0x40 - 0x4F ---
+void CPU::OP_40() { LD_r8_r8(reg.b, reg.b); }
+void CPU::OP_41() { LD_r8_r8(reg.b, reg.c); }
+void CPU::OP_42() { LD_r8_r8(reg.b, reg.d); }
+void CPU::OP_43() { LD_r8_r8(reg.b, reg.e); }
+void CPU::OP_44() { LD_r8_r8(reg.b, reg.h); }
+void CPU::OP_45() { LD_r8_r8(reg.b, reg.l); }
+void CPU::OP_46() { LD_r8_addr(reg.b, reg.hl); }
+void CPU::OP_47() { LD_r8_r8(reg.b, reg.a); }
 
-// ==========================================================
-// 8-BIT LOAD GROUP (0x40 - 0x7F)
-// ==========================================================
+void CPU::OP_48() { LD_r8_r8(reg.c, reg.b); }
+void CPU::OP_49() { LD_r8_r8(reg.c, reg.c); }
+void CPU::OP_4A() { LD_r8_r8(reg.c, reg.d); }
+void CPU::OP_4B() { LD_r8_r8(reg.c, reg.e); }
+void CPU::OP_4C() { LD_r8_r8(reg.c, reg.h); }
+void CPU::OP_4D() { LD_r8_r8(reg.c, reg.l); }
+void CPU::OP_4E() { LD_r8_addr(reg.c, reg.hl); }
+void CPU::OP_4F() { LD_r8_r8(reg.c, reg.a); }
 
-// Helper Macros
-#define LD_RR(op, dst, src) void CPU::op() { LD_r8_r8(dst, src); }
-#define LD_HL(op, dst)      void CPU::op() { LD_r8_addr(dst, reg.hl); }
-#define LD_TO_HL(op, src)   void CPU::op() { LD_addr_r8(reg.hl, src); }
+// --- 0x50 - 0x5F ---
+void CPU::OP_50() { LD_r8_r8(reg.d, reg.b); }
+void CPU::OP_51() { LD_r8_r8(reg.d, reg.c); }
+void CPU::OP_52() { LD_r8_r8(reg.d, reg.d); }
+void CPU::OP_53() { LD_r8_r8(reg.d, reg.e); }
+void CPU::OP_54() { LD_r8_r8(reg.d, reg.h); }
+void CPU::OP_55() { LD_r8_r8(reg.d, reg.l); }
+void CPU::OP_56() { LD_r8_addr(reg.d, reg.hl); }
+void CPU::OP_57() { LD_r8_r8(reg.d, reg.a); }
 
-// Row 4
-LD_RR(OP_40, reg.b, reg.b) LD_RR(OP_41, reg.b, reg.c) LD_RR(OP_42, reg.b, reg.d) LD_RR(OP_43, reg.b, reg.e)
-LD_RR(OP_44, reg.b, reg.h) LD_RR(OP_45, reg.b, reg.l) LD_HL(OP_46, reg.b)        LD_RR(OP_47, reg.b, reg.a)
+void CPU::OP_58() { LD_r8_r8(reg.e, reg.b); }
+void CPU::OP_59() { LD_r8_r8(reg.e, reg.c); }
+void CPU::OP_5A() { LD_r8_r8(reg.e, reg.d); }
+void CPU::OP_5B() { LD_r8_r8(reg.e, reg.e); }
+void CPU::OP_5C() { LD_r8_r8(reg.e, reg.h); }
+void CPU::OP_5D() { LD_r8_r8(reg.e, reg.l); }
+void CPU::OP_5E() { LD_r8_addr(reg.e, reg.hl); }
+void CPU::OP_5F() { LD_r8_r8(reg.e, reg.a); }
 
-// Row 5
-LD_RR(OP_48, reg.c, reg.b) LD_RR(OP_49, reg.c, reg.c) LD_RR(OP_4A, reg.c, reg.d) LD_RR(OP_4B, reg.c, reg.e)
-LD_RR(OP_4C, reg.c, reg.h) LD_RR(OP_4D, reg.c, reg.l) LD_HL(OP_4E, reg.c)        LD_RR(OP_4F, reg.c, reg.a)
+// --- 0x60 - 0x6F ---
+void CPU::OP_60() { LD_r8_r8(reg.h, reg.b); }
+void CPU::OP_61() { LD_r8_r8(reg.h, reg.c); }
+void CPU::OP_62() { LD_r8_r8(reg.h, reg.d); }
+void CPU::OP_63() { LD_r8_r8(reg.h, reg.e); }
+void CPU::OP_64() { LD_r8_r8(reg.h, reg.h); }
+void CPU::OP_65() { LD_r8_r8(reg.h, reg.l); }
+void CPU::OP_66() { LD_r8_addr(reg.h, reg.hl); }
+void CPU::OP_67() { LD_r8_r8(reg.h, reg.a); }
 
-// Row 6
-LD_RR(OP_50, reg.d, reg.b) LD_RR(OP_51, reg.d, reg.c) LD_RR(OP_52, reg.d, reg.d) LD_RR(OP_53, reg.d, reg.e)
-LD_RR(OP_54, reg.d, reg.h) LD_RR(OP_55, reg.d, reg.l) LD_HL(OP_56, reg.d)        LD_RR(OP_57, reg.d, reg.a)
+void CPU::OP_68() { LD_r8_r8(reg.l, reg.b); }
+void CPU::OP_69() { LD_r8_r8(reg.l, reg.c); }
+void CPU::OP_6A() { LD_r8_r8(reg.l, reg.d); }
+void CPU::OP_6B() { LD_r8_r8(reg.l, reg.e); }
+void CPU::OP_6C() { LD_r8_r8(reg.l, reg.h); }
+void CPU::OP_6D() { LD_r8_r8(reg.l, reg.l); }
+void CPU::OP_6E() { LD_r8_addr(reg.l, reg.hl); }
+void CPU::OP_6F() { LD_r8_r8(reg.l, reg.a); }
 
-LD_RR(OP_58, reg.e, reg.b) LD_RR(OP_59, reg.e, reg.c) LD_RR(OP_5A, reg.e, reg.d) LD_RR(OP_5B, reg.e, reg.e)
-LD_RR(OP_5C, reg.e, reg.h) LD_RR(OP_5D, reg.e, reg.l) LD_HL(OP_5E, reg.e)        LD_RR(OP_5F, reg.e, reg.a)
+// --- 0x70 - 0x7F ---
+void CPU::OP_70() { LD_addr_r8(reg.hl, reg.b); }
+void CPU::OP_71() { LD_addr_r8(reg.hl, reg.c); }
+void CPU::OP_72() { LD_addr_r8(reg.hl, reg.d); }
+void CPU::OP_73() { LD_addr_r8(reg.hl, reg.e); }
+void CPU::OP_74() { LD_addr_r8(reg.hl, reg.h); }
+void CPU::OP_75() { LD_addr_r8(reg.hl, reg.l); }
+void CPU::OP_76() { HALT(); }
+void CPU::OP_77() { LD_addr_r8(reg.hl, reg.a); }
 
-// Row 6 (H and L)
-LD_RR(OP_60, reg.h, reg.b) LD_RR(OP_61, reg.h, reg.c) LD_RR(OP_62, reg.h, reg.d) LD_RR(OP_63, reg.h, reg.e)
-LD_RR(OP_64, reg.h, reg.h) LD_RR(OP_65, reg.h, reg.l) LD_HL(OP_66, reg.h)        LD_RR(OP_67, reg.h, reg.a)
-
-LD_RR(OP_68, reg.l, reg.b) LD_RR(OP_69, reg.l, reg.c) LD_RR(OP_6A, reg.l, reg.d) LD_RR(OP_6B, reg.l, reg.e)
-LD_RR(OP_6C, reg.l, reg.h) LD_RR(OP_6D, reg.l, reg.l) LD_HL(OP_6E, reg.l)        LD_RR(OP_6F, reg.l, reg.a)
-
-// Row 7
-LD_TO_HL(OP_70, reg.b) LD_TO_HL(OP_71, reg.c) LD_TO_HL(OP_72, reg.d) LD_TO_HL(OP_73, reg.e)
-LD_TO_HL(OP_74, reg.h) LD_TO_HL(OP_75, reg.l) void CPU::OP_76() { HALT(); }  LD_TO_HL(OP_77, reg.a)
-
-LD_RR(OP_78, reg.a, reg.b) LD_RR(OP_79, reg.a, reg.c) LD_RR(OP_7A, reg.a, reg.d) LD_RR(OP_7B, reg.a, reg.e)
-LD_RR(OP_7C, reg.a, reg.h) LD_RR(OP_7D, reg.a, reg.l) LD_HL(OP_7E, reg.a)        LD_RR(OP_7F, reg.a, reg.a)
-
-// Clean up
-#undef LD_RR
-#undef LD_HL
-#undef LD_TO_HL
+void CPU::OP_78() { LD_r8_r8(reg.a, reg.b); }
+void CPU::OP_79() { LD_r8_r8(reg.a, reg.c); }
+void CPU::OP_7A() { LD_r8_r8(reg.a, reg.d); }
+void CPU::OP_7B() { LD_r8_r8(reg.a, reg.e); }
+void CPU::OP_7C() { LD_r8_r8(reg.a, reg.h); }
+void CPU::OP_7D() { LD_r8_r8(reg.a, reg.l); }
+void CPU::OP_7E() { LD_r8_addr(reg.a, reg.hl); }
+void CPU::OP_7F() { LD_r8_r8(reg.a, reg.a); }
 
 
 // ==========================================================
 // 8-BIT ALU GROUP (0x80 - 0xBF)
 // ==========================================================
 
-#define ALU_OP(op, func, src) void CPU::op() { func(src); }
-#define ALU_HL(op, func)      void CPU::op() { func(bus->Read(reg.hl)); }
+// --- ADD (0x80 - 0x87) ---
+void CPU::OP_80() { ADD(reg.b); }
+void CPU::OP_81() { ADD(reg.c); }
+void CPU::OP_82() { ADD(reg.d); }
+void CPU::OP_83() { ADD(reg.e); }
+void CPU::OP_84() { ADD(reg.h); }
+void CPU::OP_85() { ADD(reg.l); }
+void CPU::OP_86() { ADD(bus->Read(reg.hl)); }
+void CPU::OP_87() { ADD(reg.a); }
 
-// ADD
-ALU_OP(OP_80, ADD, reg.b) ALU_OP(OP_81, ADD, reg.c) ALU_OP(OP_82, ADD, reg.d) ALU_OP(OP_83, ADD, reg.e)
-ALU_OP(OP_84, ADD, reg.h) ALU_OP(OP_85, ADD, reg.l) ALU_HL(OP_86, ADD)        ALU_OP(OP_87, ADD, reg.a)
+// --- ADC (0x88 - 0x8F) ---
+void CPU::OP_88() { ADDC(reg.b); }
+void CPU::OP_89() { ADDC(reg.c); }
+void CPU::OP_8A() { ADDC(reg.d); }
+void CPU::OP_8B() { ADDC(reg.e); }
+void CPU::OP_8C() { ADDC(reg.h); }
+void CPU::OP_8D() { ADDC(reg.l); }
+void CPU::OP_8E() { ADDC(bus->Read(reg.hl)); }
+void CPU::OP_8F() { ADDC(reg.a); }
 
-// ADC
-ALU_OP(OP_88, ADDC, reg.b) ALU_OP(OP_89, ADDC, reg.c) ALU_OP(OP_8A, ADDC, reg.d) ALU_OP(OP_8B, ADDC, reg.e)
-ALU_OP(OP_8C, ADDC, reg.h) ALU_OP(OP_8D, ADDC, reg.l) ALU_HL(OP_8E, ADDC)        ALU_OP(OP_8F, ADDC, reg.a)
+// --- SUB (0x90 - 0x97) ---
+void CPU::OP_90() { SUB(reg.b); }
+void CPU::OP_91() { SUB(reg.c); }
+void CPU::OP_92() { SUB(reg.d); }
+void CPU::OP_93() { SUB(reg.e); }
+void CPU::OP_94() { SUB(reg.h); }
+void CPU::OP_95() { SUB(reg.l); }
+void CPU::OP_96() { SUB(bus->Read(reg.hl)); }
+void CPU::OP_97() { SUB(reg.a); }
 
-// SUB
-ALU_OP(OP_90, SUB, reg.b) ALU_OP(OP_91, SUB, reg.c) ALU_OP(OP_92, SUB, reg.d) ALU_OP(OP_93, SUB, reg.e)
-ALU_OP(OP_94, SUB, reg.h) ALU_OP(OP_95, SUB, reg.l) ALU_HL(OP_96, SUB)        ALU_OP(OP_97, SUB, reg.a)
+// --- SBC (0x98 - 0x9F) ---
+void CPU::OP_98() { SUBC(reg.b); }
+void CPU::OP_99() { SUBC(reg.c); }
+void CPU::OP_9A() { SUBC(reg.d); }
+void CPU::OP_9B() { SUBC(reg.e); }
+void CPU::OP_9C() { SUBC(reg.h); }
+void CPU::OP_9D() { SUBC(reg.l); }
+void CPU::OP_9E() { SUBC(bus->Read(reg.hl)); }
+void CPU::OP_9F() { SUBC(reg.a); }
 
-// SBC
-ALU_OP(OP_98, SUBC, reg.b) ALU_OP(OP_99, SUBC, reg.c) ALU_OP(OP_9A, SUBC, reg.d) ALU_OP(OP_9B, SUBC, reg.e)
-ALU_OP(OP_9C, SUBC, reg.h) ALU_OP(OP_9D, SUBC, reg.l) ALU_HL(OP_9E, SUBC)        ALU_OP(OP_9F, SUBC, reg.a)
+// --- AND (0xA0 - 0xA7) ---
+void CPU::OP_A0() { AND(reg.b); }
+void CPU::OP_A1() { AND(reg.c); }
+void CPU::OP_A2() { AND(reg.d); }
+void CPU::OP_A3() { AND(reg.e); }
+void CPU::OP_A4() { AND(reg.h); }
+void CPU::OP_A5() { AND(reg.l); }
+void CPU::OP_A6() { AND(bus->Read(reg.hl)); }
+void CPU::OP_A7() { AND(reg.a); }
 
-// AND
-ALU_OP(OP_A0, AND, reg.b) ALU_OP(OP_A1, AND, reg.c) ALU_OP(OP_A2, AND, reg.d) ALU_OP(OP_A3, AND, reg.e)
-ALU_OP(OP_A4, AND, reg.h) ALU_OP(OP_A5, AND, reg.l) ALU_HL(OP_A6, AND)        ALU_OP(OP_A7, AND, reg.a)
+// --- XOR (0xA8 - 0xAF) ---
+void CPU::OP_A8() { XOR(reg.b); }
+void CPU::OP_A9() { XOR(reg.c); }
+void CPU::OP_AA() { XOR(reg.d); }
+void CPU::OP_AB() { XOR(reg.e); }
+void CPU::OP_AC() { XOR(reg.h); }
+void CPU::OP_AD() { XOR(reg.l); }
+void CPU::OP_AE() { XOR(bus->Read(reg.hl)); }
+void CPU::OP_AF() { XOR(reg.a); }
 
-// XOR
-ALU_OP(OP_A8, XOR, reg.b) ALU_OP(OP_A9, XOR, reg.c) ALU_OP(OP_AA, XOR, reg.d) ALU_OP(OP_AB, XOR, reg.e)
-ALU_OP(OP_AC, XOR, reg.h) ALU_OP(OP_AD, XOR, reg.l) ALU_HL(OP_AE, XOR)        ALU_OP(OP_AF, XOR, reg.a)
+// --- OR (0xB0 - 0xB7) ---
+void CPU::OP_B0() { OR(reg.b); }
+void CPU::OP_B1() { OR(reg.c); }
+void CPU::OP_B2() { OR(reg.d); }
+void CPU::OP_B3() { OR(reg.e); }
+void CPU::OP_B4() { OR(reg.h); }
+void CPU::OP_B5() { OR(reg.l); }
+void CPU::OP_B6() { OR(bus->Read(reg.hl)); }
+void CPU::OP_B7() { OR(reg.a); }
 
-// OR
-ALU_OP(OP_B0, OR, reg.b) ALU_OP(OP_B1, OR, reg.c) ALU_OP(OP_B2, OR, reg.d) ALU_OP(OP_B3, OR, reg.e)
-ALU_OP(OP_B4, OR, reg.h) ALU_OP(OP_B5, OR, reg.l) ALU_HL(OP_B6, OR)        ALU_OP(OP_B7, OR, reg.a)
-
-// CP (CMP)
-ALU_OP(OP_B8, CMP, reg.b) ALU_OP(OP_B9, CMP, reg.c) ALU_OP(OP_BA, CMP, reg.d) ALU_OP(OP_BB, CMP, reg.e)
-ALU_OP(OP_BC, CMP, reg.h) ALU_OP(OP_BD, CMP, reg.l) ALU_HL(OP_BE, CMP)        ALU_OP(OP_BF, CMP, reg.a)
-
-#undef ALU_OP
-#undef ALU_HL
+// --- CP (0xB8 - 0xBF) ---
+void CPU::OP_B8() { CMP(reg.b); }
+void CPU::OP_B9() { CMP(reg.c); }
+void CPU::OP_BA() { CMP(reg.d); }
+void CPU::OP_BB() { CMP(reg.e); }
+void CPU::OP_BC() { CMP(reg.h); }
+void CPU::OP_BD() { CMP(reg.l); }
+void CPU::OP_BE() { CMP(bus->Read(reg.hl)); }
+void CPU::OP_BF() { CMP(reg.a); }
 
 
 // ==========================================================
 // CONTROL FLOW & I/O (0xC0 - 0xFF)
 // ==========================================================
 
-// --- MACROS ---
-#define POP_16(op, reg_pair)    void CPU::op() { reg_pair = PopWord(); }
-#define PUSH_16(op, reg_pair)   void CPU::op() { PushWord(reg_pair); }
-#define RESET(op, vec)            void CPU::op() { RST(vec); }
-
-// Conditional Returns
-#define RET_CC(op, flag, val)   void CPU::op() { if(flag == val) { RET(); } }
-// Conditional Jumps
-#define JP_CC(op, flag, val)    void CPU::op() { uint16_t addr = FetchWord(); if(flag == val) { JP(addr); } }
-// Conditional Calls
-#define CALL_CC(op, flag, val)  void CPU::op() { uint16_t addr = FetchWord(); if(flag == val) { CALL(addr); } }
-
-
-// Row C
-RET_CC(OP_C0, reg.GetZ(), false)
-POP_16(OP_C1, reg.bc)
-JP_CC(OP_C2, reg.GetZ(), false)
+// --- 0xC0 - 0xCF ---
+void CPU::OP_C0() { if (!reg.GetZ()) RET(); } // RET NZ
+void CPU::OP_C1() { reg.bc = PopWord(); } // POP BC
+void CPU::OP_C2() { uint16_t addr = FetchWord(); if (!reg.GetZ()) JP(addr); } // JP NZ
 void CPU::OP_C3() { JP(FetchWord()); } // JP a16
-CALL_CC(OP_C4, reg.GetZ(), false)
-PUSH_16(OP_C5, reg.bc)
-void CPU::OP_C6() { ADD(FetchByte()); }      // ADD A, n8
-RESET(OP_C7, 0x00)
+void CPU::OP_C4() { uint16_t addr = FetchWord(); if (!reg.GetZ()) CALL(addr); } // CALL NZ
+void CPU::OP_C5() { PushWord(reg.bc); } // PUSH BC
+void CPU::OP_C6() { ADD(FetchByte()); }
+void CPU::OP_C7() { RST(0x00); }
 
-RET_CC(OP_C8, reg.GetZ(), true)
-void CPU::OP_C9() { RET(); }           // RET
-JP_CC(OP_CA, reg.GetZ(), true)
+void CPU::OP_C8() { if (reg.GetZ()) RET(); } // RET Z
+void CPU::OP_C9() { RET(); }
+void CPU::OP_CA() { uint16_t addr = FetchWord(); if (reg.GetZ()) JP(addr); } // JP Z
+//void CPU::OP_CB() {  } // At the bottom of the file
+void CPU::OP_CC() { uint16_t addr = FetchWord(); if (reg.GetZ()) CALL(addr); } // CALL Z
+void CPU::OP_CD() { CALL(FetchWord()); }
+void CPU::OP_CE() { ADDC(FetchByte()); }
+void CPU::OP_CF() { RST(0x08); }
 
-//CB Instruction here
+// --- 0xD0 - 0xDF ---
+void CPU::OP_D0() { if (!reg.GetC()) RET(); } // RET NC
+void CPU::OP_D1() { reg.de = PopWord(); } // POP DE
+void CPU::OP_D2() { uint16_t addr = FetchWord(); if (!reg.GetC()) JP(addr); } // JP NC
+void CPU::OP_D3() {} // Unused
+void CPU::OP_D4() { uint16_t addr = FetchWord(); if (!reg.GetC()) CALL(addr); } // CALL NC
+void CPU::OP_D5() { PushWord(reg.de); } // PUSH DE
+void CPU::OP_D6() { SUB(FetchByte()); }
+void CPU::OP_D7() { RST(0x10); }
 
-CALL_CC(OP_CC, reg.GetZ(), true)
-void CPU::OP_CD() { CALL(FetchWord()); } // CALL a16
-void CPU::OP_CE() { ADDC(FetchByte()); }       // ADC A, n8
-RESET(OP_CF, 0x08)
-
-// Row D
-RET_CC(OP_D0, reg.GetC(), false)
-POP_16(OP_D1, reg.de)
-JP_CC(OP_D2, reg.GetC(), false)
-void CPU::OP_D3() {} // Unused/Illegal
-CALL_CC(OP_D4, reg.GetC(), false)
-PUSH_16(OP_D5, reg.de)
-void CPU::OP_D6() { SUB(FetchByte()); }        // SUB n8
-RESET(OP_D7, 0x10)
-
-RET_CC(OP_D8, reg.GetC(), true)
-void CPU::OP_D9() { RET(); EI(); }       // RETI
-JP_CC(OP_DA, reg.GetC(), true)
+void CPU::OP_D8() { if (reg.GetC()) RET(); } // RET C
+void CPU::OP_D9() { RET(); EI(); } // RETI
+void CPU::OP_DA() { uint16_t addr = FetchWord(); if (reg.GetC()) JP(addr); } // JP C
 void CPU::OP_DB() {} // Unused
-CALL_CC(OP_DC, reg.GetC(), true)
+void CPU::OP_DC() { uint16_t addr = FetchWord(); if (reg.GetC()) CALL(addr); } // CALL C
 void CPU::OP_DD() {} // Unused
-void CPU::OP_DE() { SUBC(FetchByte()); }       // SBC A, n8
-RESET(OP_DF, 0x18)
+void CPU::OP_DE() { SUBC(FetchByte()); }
+void CPU::OP_DF() { RST(0x18); }
 
-// Row E
-void CPU::OP_E0() { uint8_t offset = FetchByte(); bus->Write(0xFF00 + offset, reg.a); } // LDH (n8), A
-POP_16(OP_E1, reg.hl)
+// --- 0xE0 - 0xEF ---
+void CPU::OP_E0() { bus->Write(0xFF00 + FetchByte(), reg.a); } // LDH (n8), A
+void CPU::OP_E1() { reg.hl = PopWord(); } // POP HL
 void CPU::OP_E2() { bus->Write(0xFF00 + reg.c, reg.a); } // LD (C), A
 void CPU::OP_E3() {} // Unused
 void CPU::OP_E4() {} // Unused
-PUSH_16(OP_E5, reg.hl)
-void CPU::OP_E6() { AND(FetchByte()); } // AND n8
-RESET(OP_E7, 0x20)
+void CPU::OP_E5() { PushWord(reg.hl); } // PUSH HL
+void CPU::OP_E6() { AND(FetchByte()); }
+void CPU::OP_E7() { RST(0x20); }
 
 void CPU::OP_E8() { ADD_SP_e8((int8_t)FetchByte()); }
-void CPU::OP_E9() { JP(reg.hl); } // JP (HL) -> Jump to address IN HL
-void CPU::OP_EA() { uint16_t addr = FetchWord(); bus->Write(addr, reg.a); } // LD (a16), A
+void CPU::OP_E9() { JP(reg.hl); } // JP (HL)
+void CPU::OP_EA() { bus->Write(FetchWord(), reg.a); } // LD (a16), A
 void CPU::OP_EB() {} // Unused
 void CPU::OP_EC() {} // Unused
 void CPU::OP_ED() {} // Unused
-void CPU::OP_EE() { XOR(FetchByte()); } // XOR n8
-RESET(OP_EF, 0x28)
+void CPU::OP_EE() { XOR(FetchByte()); }
+void CPU::OP_EF() { RST(0x28); }
 
-// Row F
-void CPU::OP_F0() { uint8_t offset = FetchByte(); reg.a = bus->Read(0xFF00 + offset); } // LDH A, (n8)
-void CPU::OP_F1() { reg.af = PopWord(); reg.f &= 0xF0; } // POP AF (Cleanup flags!)
+// --- 0xF0 - 0xFF ---
+void CPU::OP_F0() { reg.a = bus->Read(0xFF00 + FetchByte()); } // LDH A, (n8)
+void CPU::OP_F1() { reg.af = PopWord(); reg.f &= 0xF0; } // POP AF (Clean flags)
 void CPU::OP_F2() { reg.a = bus->Read(0xFF00 + reg.c); } // LD A, (C)
 void CPU::OP_F3() { DI(); }
 void CPU::OP_F4() {} // Unused
-PUSH_16(OP_F5, reg.af)
-void CPU::OP_F6() { OR(FetchByte()); } // OR n8
-RESET(OP_F7, 0x30)
+void CPU::OP_F5() { PushWord(reg.af); } // PUSH AF
+void CPU::OP_F6() { OR(FetchByte()); }
+void CPU::OP_F7() { RST(0x30); }
 
 void CPU::OP_F8() { LD_HL_SP_e8((int8_t)FetchByte()); }
 void CPU::OP_F9() { reg.sp = reg.hl; } // LD SP, HL
-void CPU::OP_FA() { uint16_t addr = FetchWord(); reg.a = bus->Read(addr); } // LD A, (a16)
+void CPU::OP_FA() { reg.a = bus->Read(FetchWord()); } // LD A, (a16)
 void CPU::OP_FB() { EI(); }
 void CPU::OP_FC() {} // Unused
 void CPU::OP_FD() {} // Unused
-void CPU::OP_FE() { CMP(FetchByte()); } // CP n8
-RESET(OP_FF, 0x38)
+void CPU::OP_FE() { CMP(FetchByte()); }
+void CPU::OP_FF() { RST(0x38); }
 
-#undef POP_16
-#undef PUSH_16
-#undef RST
-#undef RET_CC
-#undef JP_CC
-#undef CALL_CC
 
-;
+// Our special CB
 void CPU::OP_CB()
 {
     uint8_t cb_op = FetchByte();
