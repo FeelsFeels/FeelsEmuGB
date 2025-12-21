@@ -3,6 +3,8 @@
 GameBoy::GameBoy()
 {
 	cpu.AttachBus(&bus);
+	bus.AttachPPU(&ppu);
+
 }
 
 GameBoy::~GameBoy()
@@ -23,7 +25,7 @@ void GameBoy::InsertCartridge(std::string filepath)
 		return;
 	}
 	
-	std::cout << "Loaded Rom: " << filepath << "\n";
+	//std::cout << "Loaded Rom: " << filepath << "\n";
 	pathToCartridge = filepath;
 	cart = Cartridge::CreateCartridge(std::move(romData));
 	bus.AttachCartridge(cart.get());
@@ -43,6 +45,7 @@ void GameBoy::Update()
 		return;
 	}
 
-	cpu.Step();
+	int cycles = cpu.Step();
+	ppu.Tick(cycles);
 
 }

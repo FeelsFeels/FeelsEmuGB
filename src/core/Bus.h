@@ -20,6 +20,8 @@ public:
 	void AttachCartridge(Cartridge* cart);
 	void RemoveCartridge();
 
+	void AttachPPU(PPU* p);
+
 	//void AttachCPU(CPU* p) { cpu = p; };
 	//void AttachPPU(PPU* p) { ppu = p; };
 
@@ -27,15 +29,14 @@ public:
 
 private:
 	Cartridge* cartridge;
-	PPU ppu;
-	//CPU* cpu;
+	PPU* ppu;
 
 	bool cgbMode = false;
 	bool bootRomEnabled = false;
 
 	std::array<uint8_t, 8192> wram;
 	std::array<uint8_t, 127> hram;
-	std::array<uint8_t, 128> io;
+	std::array<uint8_t, 128> io;	// TODO: this is temporary. this is memory for the components i have not yet implemented.
 
 	static constexpr AddressRange addrCart		  { 0x0000, 0x7FFF };
 	static constexpr AddressRange addrVRAM		  { 0x8000, 0x9FFF };

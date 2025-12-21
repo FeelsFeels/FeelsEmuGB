@@ -10,6 +10,11 @@ void Bus::RemoveCartridge()
 	cartridge = nullptr;
 }
 
+void Bus::AttachPPU(PPU* p)
+{
+	ppu = p;
+}
+
 void Bus::RunBootRom()
 {
 	// Read boot rom, execute instructions
@@ -97,7 +102,14 @@ uint8_t Bus::Read(Address addr)
 	else if (addrIO.Contains(addr))
 	{
 		// TODO: Redirect to Timer, Audio, PPU, etc.
-		return io[addr & 0x7F];
+		if (addr >= 0xFF40 && addr <= 0xFF4B)
+		{
+			return ppu->Read(addr);
+		}
+		else
+		{
+			return io[addr & 0x7F];
+		}
 	}
 	else if (addrHRAM.Contains(addr))
 	{
@@ -105,7 +117,7 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrIE.Contains(addr))
 	{
-		return io[0x7F];
+		//return io[0x7F];
 	}
 
 	return 0xFF;
@@ -124,7 +136,7 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrVRAM.Contains(addr))
 	{
-		// ppu.WriteVRAM(addr, data);
+		ppu->Write(addr, data);
 	}
 	else if (addrExtRAM.Contains(addr))
 	{
@@ -172,7 +184,16 @@ void Bus::Write(Address addr, uint8_t data)
 		// ----------------------------
 #endif
 
-		io[addr & 0x7F] = data;
+
+		if (addr >= 0xFF40 && addr <= 0xFF4B)
+		{
+			ppu->Write(addr, data);
+		}
+		else
+		{
+			io[addr & 0x7F] = data;
+		}
+
 		if (addr == 0xFF50)
 		{
 			bootRomEnabled = false;

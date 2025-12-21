@@ -60,7 +60,7 @@ std::unique_ptr<Cartridge> Cartridge::CreateCartridge(std::vector<uint8_t>&& rom
 
 CartridgeInfo Cartridge::ParseCartridgeHeader(const std::vector<uint8_t>& romData)
 {
-	std::cout << "Parsing... Raw ROM size: " << romData.size() << "\n";
+	//std::cout << "Parsing... Raw ROM size: " << romData.size() << "\n";
 
 	CartridgeInfo cartInfo;
 

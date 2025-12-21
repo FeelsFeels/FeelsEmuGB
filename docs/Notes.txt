@@ -107,7 +107,25 @@ This means that the boot ROM supercedes the cartridge code inside 0000-00FF unti
 After finishing, the boot ROM hands off control to the cartridge at 0x0100.
 
 
+On Graphics:
+https://www.huderlem.com/demos/gameboy2bpp.html
+Tile data is stored in VRAM, 0x8000-0x97FF
+Each tile is 16 bytes. Thus 384 tiles. Stored in three "blocks" of 128 tiles each
+Each tile is 8x8 pixels.
+Each line is represented by 2 bytes. (8 lines)
+Each pixel has 2 bits of color depth, 4 colors (grey shades)
+Example of a tile:
+FF 00 7E FF 85 81 89 83 93 85 A5 8B C9 97 7E FF
+0xFF 0x00 represents the 1st row, 0x7E 0xFF represents the second, and so on.
+Each pixel can have 4 colors (or more accurately said to be shades of grey) - 00, 01, 10, 11.
+You get these colors by combining the bits of the high byte and low byte of the tile info.
+For example, the second line: 7E (low byte) FF (high byte)
+1111 1111
+0111 1110
+for the first pixel, we combine the high and low bytes to get a pixel color of 10 (color 3)
+for the second pixel, 11.
 
 
+Object, an entry in object attribute memory, composed of 1 or 2 tiles. Can be moved independently of the background.
 
 
