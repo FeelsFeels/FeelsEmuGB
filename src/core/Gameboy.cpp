@@ -44,11 +44,11 @@ const CartridgeInfo& GameBoy::GetCartInfo() const
 	return cart->info;
 }
 
-void GameBoy::Update()
+int GameBoy::Update()
 {
 	if (!cart)
 	{
-		return;
+		return 0;
 	}
 
 	int cycles = cpu.HandleInterrupts();
@@ -59,4 +59,6 @@ void GameBoy::Update()
 	}
 
 	ppu.Tick(cycles);
+
+	return cycles;
 }

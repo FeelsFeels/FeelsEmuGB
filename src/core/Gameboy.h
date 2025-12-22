@@ -18,7 +18,7 @@ public:
 	const CartridgeInfo& GetCartInfo() const;
 	const std::string& GetCartPath() const { return pathToCartridge; };
 
-	void Update();
+	int Update();
 
 private:
 	friend class DebugInfo;

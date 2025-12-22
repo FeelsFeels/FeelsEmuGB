@@ -79,6 +79,7 @@ int main(int argc, char* argv[])
     GameBoy gameboy;
     gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
     //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/02-interrupts.gb");
+    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/03-op sp,hl.gb");
 
 #ifdef _DEBUG
     Editor editor;
@@ -87,12 +88,12 @@ int main(int argc, char* argv[])
     // Main Loop
     bool done = false;
 
-#ifdef GAMEBOY_DOCTOR
-    while (!done)
-    {
-        gameboy.Update();
-    }
-#else
+//#ifdef GAMEBOY_DOCTOR
+//    while (!done)
+//    {
+//        gameboy.Update();
+//    }
+//#else
     while (!done)
     {
         SDL_Event event;
@@ -117,7 +118,14 @@ int main(int argc, char* argv[])
         // GAMEBOY RENDERING HERE
         // Run CPU for 1 frame
         // Update Texture with PPU pixels
-        gameboy.Update();
+        const int CYCLES_PER_FRAME = 70224;
+        int cyclesThisFrame = 0;
+        while (cyclesThisFrame < CYCLES_PER_FRAME)
+        {
+            int cycles = gameboy.Update();
+            if (cycles <= 0) break;
+            cyclesThisFrame += cycles;
+        }
 
         // Rendering
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
@@ -130,7 +138,7 @@ int main(int argc, char* argv[])
         // Swap buffers
         SDL_GL_SwapWindow(window);
     }
-#endif
+//#endif
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

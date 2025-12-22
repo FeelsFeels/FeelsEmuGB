@@ -150,7 +150,7 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrIO.Contains(addr))
 	{
-#ifdef GAMEBOY_DOCTOR
+//#ifdef GAMEBOY_DOCTOR
 		// --- TEST ROM OUTPUT STUB ---
 		// Blargg's test ROMs write characters to 0xFF01
 		if (addr == 0xFF01)
@@ -161,18 +161,18 @@ void Bus::Write(Address addr, uint8_t data)
 			if (testOutput.find("Passed") != std::string::npos)
 			{
 				std::cout << "\n\nTEST PASSED!\n";
-				exit(0); // Stop the emulator immediately
+				//exit(0); // Stop the emulator
 			}
 
 			// Safety: If it fails, it usually prints "Failed"
 			if (testOutput.find("Failed") != std::string::npos)
 			{
 				std::cout << "\n\nTEST FAILED!\n";
-				exit(1);
+				//exit(1);
 			}
 		}
 		// ----------------------------
-#endif
+//#endif
 
 		if (addrIO_LCD_Control.Contains(addr))
 		{
