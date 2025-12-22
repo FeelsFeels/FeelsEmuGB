@@ -11,11 +11,15 @@
 #endif
 
 #ifdef _DEBUG
-#define ASSERT(x, msg) \
+#define ASSERT(x, fmt, ...) \
+    do { \
         if (!(x)) { \
-            fprintf(stderr, "ASSERTION FAILED: %s\nFile: %s\nLine: %d\nMessage: %s\n", #x, __FILE__, __LINE__, msg); \
+            fprintf(stderr, \
+                "ASSERTION FAILED: %s\nFile: %s\nLine: %d\nMessage: " fmt "\n", \
+                #x, __FILE__, __LINE__, ##__VA_ARGS__); \
             DEBUG_BREAK(); \
-        }
+        } \
+    } while (0)
 #else
 #define ASSERT(x, msg) void(0)
 #endif

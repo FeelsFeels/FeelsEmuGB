@@ -107,6 +107,10 @@ This means that the boot ROM supercedes the cartridge code inside 0000-00FF unti
 After finishing, the boot ROM hands off control to the cartridge at 0x0100.
 
 
+On the Timer:
+https://github.com/Ashiepaws/GBEDG/blob/master/timers/index.md
+
+
 On Graphics:
 https://www.huderlem.com/demos/gameboy2bpp.html
 Tile data is stored in VRAM, 0x8000-0x97FF
@@ -128,4 +132,20 @@ for the second pixel, 11.
 
 Object, an entry in object attribute memory, composed of 1 or 2 tiles. Can be moved independently of the background.
 
+Timing for graphics:
+GB resolution: 160 x 144
+Dots are same as cycles, one 4.194 Mhz time unit.
+A frame consists of 154 scanlines (rows).
+The gameboy's screen height is 144 pixels, and the PPU also defines a 10 extra scanline duration as it's V-blank (144 + 10) = 154 scanlines
+One scanline is drawn in 456 dots, so total times taken for one frame is 456 x 154 = 70244 dots.
+This 456 value is computed as such:
+Each scanline is drawn in 3 phases - OAM retrival (always 80 dots), Drawing(172-289 dots), H-Blank(87-204 dots).
+The H blank actual duration seems to be 87, but will compensate and take extra time depending on how fast the drawing stage took, leading to a consistent 456 dot timing for one scanline.
+
+
+On Interrupts:
+3 main parts that control the interrupt system.
+IF register 0xFF0F - The state of the interrupts. "Do I need to handle any interrupts?"
+IE register 0xFFFF - Interrupt table. Enables/Disables whether each interrupt can be called.
+IME flag, internal to cpu - Enables/Disables all interrupts globally.
 

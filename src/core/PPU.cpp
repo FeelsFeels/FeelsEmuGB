@@ -1,4 +1,5 @@
 #include "PPU.h"
+#include "Bus.h"
 
 void PPU::Tick(int cycles)
 {
@@ -25,8 +26,8 @@ void PPU::Tick(int cycles)
         {
             mode = PPUMode::VBLANK;
 
-            // Tell the Bus to Request Interrupt (Bit 0 of IF register)
-
+            // Tell the Bus to Request Interrupt
+            bus->RequestInterrupt(InterruptCode::VBLANK);
         }
 
         if (ly > 153)   // V blank done
@@ -39,13 +40,9 @@ void PPU::Tick(int cycles)
 
 }
 
-
+// TODO: VRAM OAM READS WRITES NOT DONE
 uint8_t PPU::Read(Address addr)
 {
-    if (addr == 0xFF44)
-    {
-        return 0x90; // Hardcode LY to 144 (V-Blank start)
-    }
 
     switch (addr)
     {
@@ -62,13 +59,15 @@ uint8_t PPU::Read(Address addr)
 
 void PPU::Write(Address addr, uint8_t data)
 {
+    if(addr)
+
     switch (addr)
     {
     case 0xFF40: lcdc = data; break;
     case 0xFF41: stat = data; break; // Note: Some bits are read-only
     case 0xFF42: scy = data; break;
     case 0xFF43: scx = data; break;
-    case 0xFF44: break; // LY is Read-Only! (Reset on write in real hardware)
+    case 0xFF44: ly = 0; break; // LY is Read-Only! Reset on write
     case 0xFF45: lyc = data; break;
     case 0xFF47: bgp = data; break;
     }

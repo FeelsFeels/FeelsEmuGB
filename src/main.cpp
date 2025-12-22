@@ -78,6 +78,7 @@ int main(int argc, char* argv[])
 
     GameBoy gameboy;
     gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
+    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/02-interrupts.gb");
 
 #ifdef _DEBUG
     Editor editor;

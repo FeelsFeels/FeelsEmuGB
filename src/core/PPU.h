@@ -5,6 +5,7 @@
 
 #include <array>
 
+class Bus;
 
 enum PPUMode : uint8_t
 {
@@ -22,7 +23,17 @@ public:
 	uint8_t Read(Address addr);
 	void Write(Address addr, uint8_t data);
 
+	void AttachBus(Bus* p) { bus = p; }
+
 private:
+
+	uint8_t ReadVRAM(Address offset);
+	uint8_t ReadOAM(Address offset);
+	void WriteVRAM(Address offset, uint8_t val);
+	void WriteOAM(Address offset, uint8_t val);
+
+
+	Bus* bus;
 
 	std::array<uint8_t, 8192> vram;
 	std::array<uint8_t, 160> oam;

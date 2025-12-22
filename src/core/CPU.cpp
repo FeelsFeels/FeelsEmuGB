@@ -21,7 +21,7 @@ void CPU::ResetRegisters()
     reg.sp = 0xFFFE;
 }
 
-int CPU::Step()
+int CPU::Tick()
 {
 #ifdef GAMEBOY_DOCTOR
     // Code for testing via GB doctor
@@ -52,7 +52,8 @@ int CPU::Step()
     }
     else
     {
-        std::cout << " [ERROR: Unimplemented Opcode " << std::hex << (int)opCode << "]\n";
+        ASSERT(false, "Unimplemented Opcode: %02X", opCode);
+        //std::cout << " [ERROR: Unimplemented Opcode " << std::hex << (int)opCode << "]\n";
     }
 
     totalCyclesForInstruction += instructions[opCode].cycles;
@@ -73,6 +74,76 @@ int CPU::Step()
     return totalCyclesForInstruction;
 }
 
+void CPU::RequestInterrupt(InterruptCode bit)
+{
+    ASSERT(static_cast<int>(bit) <= 4, "Interrupt bit Out of Range");
+    interruptFlag |= (1 << static_cast<int>(bit));
+}
+
+int CPU::HandleInterrupts()
+{
+    uint8_t interrupts = interruptFlag & interruptFlagEnabled;
+    if (halted && interrupts)
+    {
+        halted = false;
+    }
+
+    uint8_t interruptBitToHandle = -1;
+    if (ime && interrupts)
+    {
+        ime = false;
+        for (int i = 0; i < 5; ++i)
+        {
+            if (interrupts & (1 << i))
+            {
+                interruptBitToHandle = i;
+                break;
+            }
+        }
+
+        if (interruptBitToHandle != -1)
+        {
+            interruptFlag &= ~(1 << interruptBitToHandle);
+        }
+
+        switch (interruptBitToHandle)
+        {
+        case 0: RST(0x40); break; // VBlank
+        case 1: RST(0x48); break; // STAT
+        case 2: RST(0x50); break; // Timer
+        case 3: RST(0x58); break; // Serial
+        case 4: RST(0x60); break; // Joypad
+        default:
+            ASSERT(false, "Interrupt Code invalid: %i", interruptBitToHandle);
+        }
+        return 20;
+    }
+    return 0;
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+// NOOOOOPE YALL STAY DOWN THERE WHERE I CAN'T SEE YOU
+// BTW the opcode wrappers are in CPUOpcodes.cpp
 // Helpers
 uint8_t CPU::FetchByte()
 {

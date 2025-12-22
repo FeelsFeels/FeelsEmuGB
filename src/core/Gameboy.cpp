@@ -3,8 +3,14 @@
 GameBoy::GameBoy()
 {
 	cpu.AttachBus(&bus);
-	bus.AttachPPU(&ppu);
 
+	ppu.AttachBus(&bus);
+
+	timer.AttachBus(&bus);
+
+	bus.AttachCPU(&cpu);
+	bus.AttachPPU(&ppu);
+	bus.AttachTimer(&timer);
 }
 
 GameBoy::~GameBoy()
@@ -45,7 +51,12 @@ void GameBoy::Update()
 		return;
 	}
 
-	int cycles = cpu.Step();
-	ppu.Tick(cycles);
+	int cycles = cpu.HandleInterrupts();
 
+	if (cycles == 0)
+	{
+		cycles = cpu.Tick();
+	}
+
+	ppu.Tick(cycles);
 }

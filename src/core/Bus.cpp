@@ -1,19 +1,7 @@
 #include "Bus.h"
-
-void Bus::AttachCartridge(Cartridge* cart)
-{
-	cartridge = cart;
-}
-
-void Bus::RemoveCartridge()
-{
-	cartridge = nullptr;
-}
-
-void Bus::AttachPPU(PPU* p)
-{
-	ppu = p;
-}
+#include "Timer.h"
+#include "CPU.h"
+#include "PPU.h"
 
 void Bus::RunBootRom()
 {
@@ -70,7 +58,7 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrVRAM.Contains(addr))
 	{
-		// return ppu.ReadVRAM(addr); // TODO: Connect PPU later
+		return ppu->Read(addr);
 		return 0xFF;
 	}
 	else if (addrExtRAM.Contains(addr))
@@ -82,17 +70,19 @@ uint8_t Bus::Read(Address addr)
 		if (cgbMode && AddressRange::InRange(0xD000, 0xDFFF, addr))
 		{
 			// Switchable bank 1-7
-			ASSERT(false, "CGB unsupported")
+			ASSERT(false, "CGB unsupported");
 		}
-		return wram[addr & 0x1FFF];
+
+		return wram[addrWRAM.GetOffset(addr)];
 	}
 	else if (addrEchoRAM.Contains(addr))
 	{
-		return wram[addr & 0x1FFF];
+		return wram[addrEchoRAM.GetOffset(addr)];
 	}
 	else if (addrOAM.Contains(addr))
 	{
-		// return ppu.ReadOAM(addr); // TODO: Connect PPU later
+		// TODO: PPU OAM STILL NOT DONE
+		return ppu->Read(addr);
 		return 0xFF;
 	}
 	else if (addrUnused.Contains(addr))
@@ -102,27 +92,27 @@ uint8_t Bus::Read(Address addr)
 	else if (addrIO.Contains(addr))
 	{
 		// TODO: Redirect to Timer, Audio, PPU, etc.
-		if (addr >= 0xFF40 && addr <= 0xFF4B)
+		if (addrIO_LCD_Control.Contains(addr))
 		{
 			return ppu->Read(addr);
 		}
 		else
 		{
-			return io[addr & 0x7F];
+			return io[addrIO.GetOffset(addr)];
 		}
 	}
 	else if (addrHRAM.Contains(addr))
 	{
-		return hram[addr & 0x7F];
+		return hram[addrHRAM.GetOffset(addr)];
 	}
 	else if (addrIE.Contains(addr))
 	{
-		//return io[0x7F];
+		return cpu->GETIE();
 	}
 
+	ASSERT(false, "Unimplemented address range: %04X", addr);
 	return 0xFF;
 
-	// ASSERT(false, "Unimplemented address range: " + std::to_string(addr));
 }
 
 void Bus::Write(Address addr, uint8_t data)
@@ -144,15 +134,15 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrWRAM.Contains(addr))
 	{
-		wram[addr & 0x1FFF] = data;
+		wram[addrWRAM.GetOffset(addr)] = data;
 	}
 	else if (addrEchoRAM.Contains(addr))
 	{
-		wram[addr & 0x1FFF] = data;
+		wram[addrWRAM.GetOffset(addr)] = data;
 	}
 	else if (addrOAM.Contains(addr))
 	{
-		// ppu.WriteOAM(addr, data);
+		ppu->Write(addr, data);
 	}
 	else if (addrUnused.Contains(addr))
 	{
@@ -184,31 +174,32 @@ void Bus::Write(Address addr, uint8_t data)
 		// ----------------------------
 #endif
 
-
-		if (addr >= 0xFF40 && addr <= 0xFF4B)
+		if (addrIO_LCD_Control.Contains(addr))
 		{
 			ppu->Write(addr, data);
+		}
+		else if (addr == 0xFF50)
+		{
+			bootRomEnabled = false;
+			return;
 		}
 		else
 		{
 			io[addr & 0x7F] = data;
 		}
-
-		if (addr == 0xFF50)
-		{
-			bootRomEnabled = false;
-			return;
-		}
 	}
 	else if (addrHRAM.Contains(addr))
 	{
-		hram[addr & 0x7F] = data;
+		hram[addrHRAM.GetOffset(addr)] = data;
 	}
 	else if (addrIE.Contains(addr))
 	{
-		io[0x7F] = data;
+		cpu->SetIE(data);
 	}
+}
 
-
+void Bus::RequestInterrupt(InterruptCode bit)
+{
+	cpu->RequestInterrupt(bit);
 }
 

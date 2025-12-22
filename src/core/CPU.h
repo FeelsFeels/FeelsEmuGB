@@ -1,6 +1,7 @@
 #pragma once
 #include "Register.h"
 #include "Address.h"
+#include "Interrupts.h"
 
 #include <vector>
 
@@ -12,17 +13,20 @@ public:
 	CPU();
 
 	void AttachBus(Bus* p) { bus = p; }
-	void ResetRegisters();
-	int Step();
+	void ResetRegisters();	// Call at the start of program, after Boot ROM finishes
+
+	int HandleInterrupts();
+	int Tick();
+
+	void RequestInterrupt(InterruptCode bit);
+
+	uint8_t GetIF()			{ return interruptFlag; }
+	uint8_t GETIE()			{ return interruptFlagEnabled ;}
+	void SetIF(uint8_t val) { interruptFlag = val; }
+	void SetIE(uint8_t val) { interruptFlagEnabled = val; }
 
 private:
-	//enum OperandType { REG_A, REG_B, IMM8, ADDR_HL, ... };
-	//struct Instruction
-	//{
-	//	void (CPU::* op_func)(OperandType, OperandType);
-	//	OperandType dst;
-	//	OperandType src;
-	//};
+	
 	friend class DebugInfo;
 
 	struct Instruction
@@ -41,18 +45,30 @@ private:
 	std::vector<Instruction> instructions;
 	std::vector<CBInstruction> cbInstructions;
 
-	int totalCyclesForInstruction;
-	uint8_t lastInstruction;	// honestly just for debug purposes;
+	int totalCyclesForInstruction; // Computing the final cycles taken by each operation
+
+	uint8_t lastInstruction;	// just for debug information draw purposes;
 
 	Bus* bus;
 	Registers reg;
 
-	// Internal CPU state
-	bool ime = true;	  // Interrupt Master Enable. true being "Enables Interrupt Handling"
+	// Internal CPU state + interrupts
+	bool ime = false;	  // Interrupt Master Enable. true being "Enables Interrupt Handling". Startup is false
 	bool imeNext = false; // When enabling ime (ei instruction), CPU waits until next cycle to enable.
 	bool halted = false;  // If true, don't fetch opcodes. Wakes on any interrupt
 	bool stopped = false; // Wakes on joypad interrupt.
 
+	uint8_t interruptFlag;		  // 0xFF0F
+	uint8_t interruptFlagEnabled; // 0xFFFF
+
+	
+
+	// Anything below here, 
+	// just don't look.
+	// It's just CPU Instructions and the Opcodes.
+	// Mom, please don't look. It's messy and im SUGEYO
+
+#pragma region Instructions
 	// Helpers for instructions
 	uint8_t  FetchByte();	// from pc
 	uint16_t FetchWord();
@@ -60,8 +76,7 @@ private:
 	uint16_t PopWord();
 	void PushByte(uint8_t val);
 	void PushWord(uint16_t val);
-	
-#pragma region Instructions
+
 	void NOP();
 	void INVALID();
 
@@ -136,8 +151,6 @@ private:
 
 #pragma endregion
 
-
-// Note: Opcode 0xE8 is one of the special ones.
 #pragma region Opcode Hell
 
 #pragma region OP_00_0F
@@ -253,7 +266,6 @@ private:
 #pragma endregion
 
 #pragma endregion
-
 
 #pragma region CB Opcode Hell
 

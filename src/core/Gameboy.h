@@ -1,6 +1,9 @@
 #pragma once
 #include "Bus.h"
 #include "Cartridge.h"
+#include "Timer.h"
+#include "CPU.h"
+#include "PPU.h"
 
 #include <memory>
 
@@ -26,4 +29,5 @@ private:
 	Bus bus;
 	CPU cpu;
 	PPU ppu;
+	Timer timer;
 };
