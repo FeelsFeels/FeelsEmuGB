@@ -52,6 +52,7 @@ int GameBoy::Update()
 	}
 
 	int cycles = cpu.Tick();
+	timer.Tick(cycles);
 	ppu.Tick(cycles);
 
 	return cycles;

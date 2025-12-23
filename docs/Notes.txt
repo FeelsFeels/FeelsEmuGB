@@ -25,6 +25,8 @@ I want to implement the scrolling visualizer just like the Ultimate Game Boy Tal
 I want a sound visualizer as well.
 
 
+
+
 Components:
 Game Boy
 CPU

@@ -43,10 +43,10 @@ void PPU::Tick(int cycles)
 // TODO: VRAM OAM READS WRITES NOT DONE
 uint8_t PPU::Read(Address addr)
 {
-    if (addr == 0xFF44)
-    {
-        return 0x90; // Hardcode LY to 144 (V-Blank start)
-    }
+    //if (addr == 0xFF44)
+    //{
+    //    return 0x90; // Hardcode LY to 144 (V-Blank start)
+    //}
 
     switch (addr)
     {

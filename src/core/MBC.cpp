@@ -1,5 +1,6 @@
 #include "MBC.h"
 
+//TODO: MBC1 - proper ROM Banking
 
 InvalidMBC::InvalidMBC(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
 	: Cartridge(std::move(info), std::move(romData))

@@ -30,12 +30,16 @@ void CPU::ResetRegisters()
 
 int CPU::Tick()
 {
-
     totalCyclesForInstruction = 0;
     totalCyclesForInstruction = HandleInterrupts();
 
     if (totalCyclesForInstruction > 0)
         return totalCyclesForInstruction;
+
+    if (halted)
+    {
+        return 4;
+    }
 
     if (imeNext)
     {
@@ -106,7 +110,7 @@ int CPU::HandleInterrupts()
         if (interruptBitToHandle != -1)
         {
             interruptFlag &= ~(1 << interruptBitToHandle);
-            printf("INTERRUPT FIRED: Bit %d at PC:%04X\n", interruptBitToHandle, reg.pc);
+            //printf("INTERRUPT FIRED: Bit %d at PC:%04X\n", interruptBitToHandle, reg.pc);
         }
 
         switch (interruptBitToHandle)
@@ -651,4 +655,5 @@ void CPU::DAA()
 void CPU::STOP()
 {
     stopped = true;
+    bus->Write(0xFF04, 0);
 }

@@ -1,27 +1,34 @@
 #include "Timer.h"
+#include "Bus.h"
 
 void Timer::Tick(int cycles)
 {
-	div += cycles;
 	bool timerEnabled = tac & 0x04;
 	uint8_t clockSelect = tac & 0x03;
-	bool currentTargetBitState = (div & (1 << targetTimerBit[clockSelect]));
+	int targetBit = targetTimerBit[clockSelect];
 
-	// Gameboy timer bug: the falling edge detector is dependant on both timerEnabled and the actual timer bit
-	bool fallingEdgeDetector = timerEnabled && currentTargetBitState;
-
-	// ticks on falling edge. that is, previous state is 1, current state is 0.
-	if (previousTargetBitState && !fallingEdgeDetector)
+	while (cycles > 0)
 	{
-		++tima;
-		if (tima == 0)
-		{
-			tima = tma;
-			// TODO: Request interrupt
+		--cycles;
+		++div;
 
+		bool currentTargetBitState = (div & (1 << targetBit));
+
+		// Gameboy timer bug: the falling edge detector is dependant on both timerEnabled and the actual timer bit
+		bool fallingEdgeDetector = timerEnabled && currentTargetBitState;
+
+		// ticks on falling edge. that is, previous state is 1, current state is 0.
+		if (previousTargetBitState && !fallingEdgeDetector)
+		{
+			++tima;
+			if (tima == 0)
+			{
+				tima = tma;
+				bus->RequestInterrupt(InterruptCode::TIMER);
+			}
 		}
+		previousTargetBitState = fallingEdgeDetector;
 	}
-	previousTargetBitState = fallingEdgeDetector;
 }
 
 uint8_t Timer::Read(Address addr)
@@ -42,7 +49,7 @@ void Timer::Write(Address addr, uint8_t val)
 	switch (addr)
 	{
 	case 0xFF04:
-		div = 0;	// TODO: "reset when executing stop instruction"
+		div = 0;	// "Reset when executing stop instruction" handled in the STOP instruction in CPU
 		break;
 	case 0xFF05: 
 		tima = val;
