@@ -43,10 +43,10 @@ void PPU::Tick(int cycles)
 // TODO: VRAM OAM READS WRITES NOT DONE
 uint8_t PPU::Read(Address addr)
 {
-    //if (addr == 0xFF44)
-    //{
-    //    return 0x90; // Hardcode LY to 144 (V-Blank start)
-    //}
+    if (addr == 0xFF44)
+    {
+        return 0x90; // Hardcode LY to 144 (V-Blank start)
+    }
 
     switch (addr)
     {
@@ -63,7 +63,10 @@ uint8_t PPU::Read(Address addr)
 
 void PPU::Write(Address addr, uint8_t data)
 {
-    if(addr)
+    if (addrVRAM.Contains(addr))
+    {
+        vram[addrVRAM.GetOffset(addr)] = data;
+    }
 
     switch (addr)
     {

@@ -71,7 +71,7 @@ int CPU::Tick()
     totalCyclesForInstruction += instructions[opcode].cycles;   //CB instruction increments inside OP_CB()
 
     lastInstruction = opcode;
-    
+
     static int instruction_count = 0;
     return totalCyclesForInstruction;
 }
@@ -216,7 +216,7 @@ void CPU::LD_r8_r8(ByteRegister& dst, const ByteRegister& value)
     dst = value;
 }
 
-void CPU::LD_r8_addr(ByteRegister & dst, const WordRegister& addr)
+void CPU::LD_r8_addr(ByteRegister& dst, const WordRegister& addr)
 {
     dst = bus->Read(addr);
 }
@@ -228,7 +228,11 @@ void CPU::LD_addr_r8(const WordRegister& addr, const ByteRegister& value)
 
 void CPU::LD_addr_SP(const WordRegister& addr)
 {
-    bus->Write(addr, reg.sp);
+    uint8_t lo = reg.sp & 0xFF;
+    uint8_t hi = (reg.sp >> 8) & 0xFF;
+
+    bus->Write(addr, lo);     // Low byte at address n
+    bus->Write(addr + 1, hi); // High byte at address n+1
 }
 
 void CPU::LD_r16_n16(WordRegister& dst, uint16_t value)
@@ -238,16 +242,18 @@ void CPU::LD_r16_n16(WordRegister& dst, uint16_t value)
 
 void CPU::LD_HL_SP_e8(int8_t val)
 {
-    int16_t sp = static_cast<int16_t>(reg.sp);
-    uint8_t unsigned_val = static_cast<uint8_t>(val);   // Casting for calculation of flags
+    // Use standard int for calculation to avoid undefined casting behavior
+    int sp_int = (int)reg.sp;
+    int val_int = (int)val;
 
     reg.SetZ(0);
     reg.SetN(0);
-    // Special case: the gameboy checks H and C flags as if doing unsigned addition.
-    reg.SetH(((sp & 0x0F) + (unsigned_val & 0x0F)) > 0x0F);
-    reg.SetC(((sp & 0xFF) + unsigned_val) > 0xFF);
+    // H and C flags calculated on the lower byte
+    reg.SetH(((sp_int & 0x0F) + (val_int & 0x0F)) > 0x0F);
+    reg.SetC(((sp_int & 0xFF) + (val_int & 0xFF)) > 0xFF);
 
-    reg.hl = sp + val;
+    // The result is strictly 16-bit
+    reg.hl = (uint16_t)(sp_int + val_int);
 }
 
 // Arithmetic
@@ -315,16 +321,24 @@ void CPU::ADD_HL(uint16_t val)
 
 void CPU::ADD_SP_e8(int8_t val)
 {
-    int16_t sp = static_cast<int16_t>(reg.sp);
-    uint8_t unsigned_val = static_cast<uint8_t>(val);   // Casting for calculation of flags
+    uint16_t sp = reg.sp;
+    int8_t signed_val = val;
 
-    reg.SetZ(0);
-    reg.SetN(0);
-    // Special case: the gameboy checks H and C flags as if doing unsigned addition.
-    reg.SetH(((sp & 0x0F) + (unsigned_val & 0x0F)) > 0x0F);
-    reg.SetC(((sp & 0xFF) + unsigned_val) > 0xFF);
+    // Flags are calculated based on the lower byte of SP + raw unsigned immediate byte
+    int result = sp + signed_val;
 
-    reg.sp = sp + val;
+    reg.SetZ(false); // Z is always 0 for ADD SP
+    reg.SetN(false);
+
+    // Half Carry: Overflow from bit 3
+    // We mask with 0xF to isolate the lower nibble
+    reg.SetH(((sp & 0xF) + (signed_val & 0xF)) > 0xF);
+
+    // Carry: Overflow from bit 7 (byte overflow)
+    // We mask with 0xFF to isolate the lower byte
+    reg.SetC(((sp & 0xFF) + (signed_val & 0xFF)) > 0xFF);
+
+    reg.sp = (uint16_t)result;
 }
 
 void CPU::CMP(uint8_t val)
@@ -340,7 +354,7 @@ void CPU::CMP(uint8_t val)
 void CPU::INC_r8(ByteRegister& dst)
 {
     ++dst;
-    
+
     reg.SetZ(dst == 0);
     reg.SetN(false);
     reg.SetH((dst & 0x0F) == 0x00); // If lower nibble is 0, there must have been a 0x0F -> 0x10 carry over
@@ -351,7 +365,7 @@ void CPU::INC_r16(WordRegister& dst)
     ++dst;
 }
 
-void CPU::DEC_r8(ByteRegister & dst)
+void CPU::DEC_r8(ByteRegister& dst)
 {
     dst--;
 
@@ -370,7 +384,7 @@ void CPU::DEC_r16(WordRegister& dst)
 void CPU::AND(uint8_t val)
 {
     reg.a &= val;
-    
+
     reg.SetZ(reg.a == 0);
     reg.SetN(false);
     reg.SetH(true);
@@ -427,7 +441,7 @@ void CPU::RL(ByteRegister& dst)
     reg.SetN(false);
     reg.SetH(false);
     reg.SetC((dst & 0x80) == 0x80);
-    
+
     dst <<= 1;
     dst += oldCarry;
 
@@ -462,7 +476,7 @@ void CPU::RR(ByteRegister& dst)
     reg.SetZ(dst == 0);
 }
 
-void CPU::RRC(ByteRegister & dst)
+void CPU::RRC(ByteRegister& dst)
 {
     bool last = dst & 0x01;
 
@@ -543,13 +557,13 @@ void CPU::BIT_addr(uint8_t bit, const WordRegister& addr)
     reg.SetH(1);
 }
 
-void CPU::SET(uint8_t bit, ByteRegister & dst)
+void CPU::SET(uint8_t bit, ByteRegister& dst)
 {
     uint8_t set = 1 << bit;
     dst |= set;
 }
 
-void CPU::RES(uint8_t bit, ByteRegister & dst)
+void CPU::RES(uint8_t bit, ByteRegister& dst)
 {
     uint8_t set = ~(1 << bit);
     dst &= set;
@@ -638,5 +652,3 @@ void CPU::STOP()
 {
     stopped = true;
 }
-
-

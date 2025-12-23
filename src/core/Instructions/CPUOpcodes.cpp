@@ -1,8 +1,6 @@
 #include "../CPU.h"
 #include "../Bus.h"
 
-
-
 void CPU::RegisterInstructions()
 {
     instructions.resize(256);
@@ -45,7 +43,8 @@ void CPU::RegisterInstructions()
     instructions[0x1E] = { &CPU::OP_1E, "LD E, n8", 8 };
     instructions[0x1F] = { &CPU::OP_1F, "RRA", 4 };
 
-    instructions[0x20] = { &CPU::OP_20, "JR NZ, n8", 8 }; // +4 if taken
+    // --- CHANGED: Max cycles for conditional jumps ---
+    instructions[0x20] = { &CPU::OP_20, "JR NZ, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x21] = { &CPU::OP_21, "LD HL, n16", 12 };
     instructions[0x22] = { &CPU::OP_22, "LDI (HL), A", 8 };
     instructions[0x23] = { &CPU::OP_23, "INC HL", 8 };
@@ -54,7 +53,8 @@ void CPU::RegisterInstructions()
     instructions[0x26] = { &CPU::OP_26, "LD H, n8", 8 };
     instructions[0x27] = { &CPU::OP_27, "DAA", 4 };
 
-    instructions[0x28] = { &CPU::OP_28, "JR Z, n8", 8 }; // +4 if taken
+    // --- CHANGED ---
+    instructions[0x28] = { &CPU::OP_28, "JR Z, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x29] = { &CPU::OP_29, "ADD HL, HL", 8 };
     instructions[0x2A] = { &CPU::OP_2A, "LDI A, (HL)", 8 };
     instructions[0x2B] = { &CPU::OP_2B, "DEC HL", 8 };
@@ -63,7 +63,8 @@ void CPU::RegisterInstructions()
     instructions[0x2E] = { &CPU::OP_2E, "LD L, n8", 8 };
     instructions[0x2F] = { &CPU::OP_2F, "CPL", 4 };
 
-    instructions[0x30] = { &CPU::OP_30, "JR NC, n8", 8 }; // +4 if taken
+    // --- CHANGED ---
+    instructions[0x30] = { &CPU::OP_30, "JR NC, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x31] = { &CPU::OP_31, "LD SP, n16", 12 };
     instructions[0x32] = { &CPU::OP_32, "LDD (HL), A", 8 };
     instructions[0x33] = { &CPU::OP_33, "INC SP", 8 };
@@ -72,7 +73,8 @@ void CPU::RegisterInstructions()
     instructions[0x36] = { &CPU::OP_36, "LD (HL), n8", 12 };
     instructions[0x37] = { &CPU::OP_37, "SCF", 4 };
 
-    instructions[0x38] = { &CPU::OP_38, "JR C, n8", 8 }; // +4 if taken
+    // --- CHANGED ---
+    instructions[0x38] = { &CPU::OP_38, "JR C, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x39] = { &CPU::OP_39, "ADD HL, SP", 8 };
     instructions[0x3A] = { &CPU::OP_3A, "LDD A, (HL)", 8 };
     instructions[0x3B] = { &CPU::OP_3B, "DEC SP", 8 };
@@ -236,38 +238,42 @@ void CPU::RegisterInstructions()
     instructions[0xBF] = { &CPU::OP_BF, "CP A", 4 };
 
     // --- CONTROL & I/O (0xC0 - 0xFF) ---
-    instructions[0xC0] = { &CPU::OP_C0, "RET NZ", 8 };  // +12 if taken
+    // --- CHANGED: Max cycles for conditional control flow ---
+    instructions[0xC0] = { &CPU::OP_C0, "RET NZ", 20 };  // 20 taken, 8 not taken
     instructions[0xC1] = { &CPU::OP_C1, "POP BC", 12 };
-    instructions[0xC2] = { &CPU::OP_C2, "JP NZ, a16", 12 }; // +4 if taken
+    instructions[0xC2] = { &CPU::OP_C2, "JP NZ, a16", 16 }; // 16 taken, 12 not taken
     instructions[0xC3] = { &CPU::OP_C3, "JP a16", 16 };
-    instructions[0xC4] = { &CPU::OP_C4, "CALL NZ, a16", 12 }; // +12 if taken
+    instructions[0xC4] = { &CPU::OP_C4, "CALL NZ, a16", 24 }; // 24 taken, 12 not taken
     instructions[0xC5] = { &CPU::OP_C5, "PUSH BC", 16 };
     instructions[0xC6] = { &CPU::OP_C6, "ADD A, n8", 8 };
     instructions[0xC7] = { &CPU::OP_C7, "RST 00H", 16 };
 
-    instructions[0xC8] = { &CPU::OP_C8, "RET Z", 8 };
+    instructions[0xC8] = { &CPU::OP_C8, "RET Z", 20 }; // 20 taken, 8 not taken
     instructions[0xC9] = { &CPU::OP_C9, "RET", 16 };
-    instructions[0xCA] = { &CPU::OP_CA, "JP Z, a16", 12 };
-    instructions[0xCB] = { &CPU::OP_CB, "PREFIX CB", 4 };
-    instructions[0xCC] = { &CPU::OP_CC, "CALL Z, a16", 12 };
+    instructions[0xCA] = { &CPU::OP_CA, "JP Z, a16", 16 }; // 16 taken, 12 not taken
+
+    // --- CHANGED: Prefix itself takes 0 here, cycles added in OP_CB ---
+    instructions[0xCB] = { &CPU::OP_CB, "PREFIX CB", 0 };
+
+    instructions[0xCC] = { &CPU::OP_CC, "CALL Z, a16", 24 }; // 24 taken, 12 not taken
     instructions[0xCD] = { &CPU::OP_CD, "CALL a16", 24 };
     instructions[0xCE] = { &CPU::OP_CE, "ADC A, n8", 8 };
     instructions[0xCF] = { &CPU::OP_CF, "RST 08H", 16 };
 
-    instructions[0xD0] = { &CPU::OP_D0, "RET NC", 8 };
+    instructions[0xD0] = { &CPU::OP_D0, "RET NC", 20 }; // 20 taken, 8 not taken
     instructions[0xD1] = { &CPU::OP_D1, "POP DE", 12 };
-    instructions[0xD2] = { &CPU::OP_D2, "JP NC, a16", 12 };
+    instructions[0xD2] = { &CPU::OP_D2, "JP NC, a16", 16 }; // 16 taken, 12 not taken
     // D3 unused
-    instructions[0xD4] = { &CPU::OP_D4, "CALL NC, a16", 12 };
+    instructions[0xD4] = { &CPU::OP_D4, "CALL NC, a16", 24 }; // 24 taken, 12 not taken
     instructions[0xD5] = { &CPU::OP_D5, "PUSH DE", 16 };
     instructions[0xD6] = { &CPU::OP_D6, "SUB n8", 8 };
     instructions[0xD7] = { &CPU::OP_D7, "RST 10H", 16 };
 
-    instructions[0xD8] = { &CPU::OP_D8, "RET C", 8 };
+    instructions[0xD8] = { &CPU::OP_D8, "RET C", 20 }; // 20 taken, 8 not taken
     instructions[0xD9] = { &CPU::OP_D9, "RETI", 16 };
-    instructions[0xDA] = { &CPU::OP_DA, "JP C, a16", 12 };
+    instructions[0xDA] = { &CPU::OP_DA, "JP C, a16", 16 }; // 16 taken, 12 not taken
     // DB unused
-    instructions[0xDC] = { &CPU::OP_DC, "CALL C, a16", 12 };
+    instructions[0xDC] = { &CPU::OP_DC, "CALL C, a16", 24 }; // 24 taken, 12 not taken
     // DD unused
     instructions[0xDE] = { &CPU::OP_DE, "SBC A, n8", 8 };
     instructions[0xDF] = { &CPU::OP_DF, "RST 18H", 16 };
@@ -304,37 +310,25 @@ void CPU::RegisterInstructions()
     instructions[0xFE] = { &CPU::OP_FE, "CP n8", 8 };
     instructions[0xFF] = { &CPU::OP_FF, "RST 38H", 16 };
 
-
-    // --- CB PREFIX INSTRUCTIONS ---
-    // Pattern: 
-    // x0-x7: Register B, C, D, E, H, L, (HL), A
-    // Row 0: RLC, RRC, RL, RR, SLA, SRA, SWAP, SRL
-    // Row 4-7: BIT
-    // Row 8-B: RES
-    // Row C-F: SET
-    
     // --- CB PREFIX INSTRUCTIONS (Data Only) ---
     for (int i = 0; i < 256; i++)
     {
         uint8_t code = i;
-        uint8_t reg_idx = code & 0x07; // 0=B, 1=C, 2=D, 3=E, 4=H, 5=L, 6=(HL), 7=A
+        uint8_t reg_idx = code & 0x07;
         uint8_t op_idx = (code >> 3) & 0x1F;
 
-        // Calculate Cycles
-        // (HL) operations usually take 16, others 8. BIT (HL) takes 12.
+        // Calculate Cycles (Standard GB behavior for CB)
+        // Normal: 8 cycles
+        // (HL): 16 cycles
+        // BIT (HL): 12 cycles
         int cycles = (reg_idx == 6) ? 16 : 8;
-        if (op_idx >= 8 && op_idx <= 15)
-        { // BIT
+        if (op_idx >= 8 && op_idx <= 15) // BIT
+        {
             cycles = (reg_idx == 6) ? 12 : 8;
         }
 
-        std::string name = "CB " + std::to_string(i);
-
-        // Fill table with nullptr for the function, but keep the cycles!
         cbInstructions[i] = { nullptr, "CB", (uint8_t)cycles };
     }
-
-
 }
 
 
@@ -377,8 +371,8 @@ void CPU::OP_1D() { DEC_r8(reg.e); }
 void CPU::OP_1E() { LD_r8_n8(reg.e, FetchByte()); }
 void CPU::OP_1F() { RR(reg.a); reg.SetZ(false); } // RRA
 
-// --- 0x20 - 0x2F ---
-void CPU::OP_20() { int8_t off = (int8_t)FetchByte(); if (!reg.GetZ()) JR(off); } // JR NZ
+// --- 0x20 - 0x2F (CONDITIONALS WITH PENALTIES) ---
+void CPU::OP_20() { int8_t off = (int8_t)FetchByte(); if (!reg.GetZ()) JR(off); else totalCyclesForInstruction -= 4; } // JR NZ
 void CPU::OP_21() { reg.hl = FetchWord(); } // LD HL, n16
 void CPU::OP_22() { bus->Write(reg.hl, reg.a); reg.hl++; } // LD (HL+), A
 void CPU::OP_23() { reg.hl++; } // INC HL
@@ -387,7 +381,7 @@ void CPU::OP_25() { DEC_r8(reg.h); }
 void CPU::OP_26() { LD_r8_n8(reg.h, FetchByte()); }
 void CPU::OP_27() { DAA(); }
 
-void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) JR(off); } // JR Z
+void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) JR(off); else totalCyclesForInstruction -= 4; } // JR Z
 void CPU::OP_29() { ADD_HL(reg.hl); }
 void CPU::OP_2A() { LD_r8_addr(reg.a, reg.hl); reg.hl++; } // LD A, (HL+)
 void CPU::OP_2B() { reg.hl--; } // DEC HL
@@ -396,8 +390,8 @@ void CPU::OP_2D() { DEC_r8(reg.l); }
 void CPU::OP_2E() { LD_r8_n8(reg.l, FetchByte()); }
 void CPU::OP_2F() { CPL(); }
 
-// --- 0x30 - 0x3F ---
-void CPU::OP_30() { int8_t off = (int8_t)FetchByte(); if (!reg.GetC()) JR(off); } // JR NC
+// --- 0x30 - 0x3F (CONDITIONALS WITH PENALTIES) ---
+void CPU::OP_30() { int8_t off = (int8_t)FetchByte(); if (!reg.GetC()) JR(off); else totalCyclesForInstruction -= 4; } // JR NC
 void CPU::OP_31() { reg.sp = FetchWord(); } // LD SP, n16
 void CPU::OP_32() { bus->Write(reg.hl, reg.a); reg.hl--; } // LD (HL-), A
 void CPU::OP_33() { reg.sp++; } // INC SP
@@ -418,7 +412,7 @@ void CPU::OP_35()
 void CPU::OP_36() { bus->Write(reg.hl, FetchByte()); } // LD (HL), n8
 void CPU::OP_37() { SCF(); }
 
-void CPU::OP_38() { int8_t off = (int8_t)FetchByte(); if (reg.GetC()) JR(off); } // JR C
+void CPU::OP_38() { int8_t off = (int8_t)FetchByte(); if (reg.GetC()) JR(off); else totalCyclesForInstruction -= 4; } // JR C
 void CPU::OP_39()
 {
     ADD_HL(reg.sp); // Note: ADD HL, SP
@@ -597,39 +591,40 @@ void CPU::OP_BF() { CMP(reg.a); }
 // ==========================================================
 
 // --- 0xC0 - 0xCF ---
-void CPU::OP_C0() { if (!reg.GetZ()) RET(); } // RET NZ
+void CPU::OP_C0() { if (!reg.GetZ()) RET(); else totalCyclesForInstruction -= 12; } // RET NZ: 20 -> 8
 void CPU::OP_C1() { reg.bc = PopWord(); } // POP BC
-void CPU::OP_C2() { uint16_t addr = FetchWord(); if (!reg.GetZ()) JP(addr); } // JP NZ
+void CPU::OP_C2() { uint16_t addr = FetchWord(); if (!reg.GetZ()) JP(addr); else totalCyclesForInstruction -= 4; } // JP NZ: 16 -> 12
 void CPU::OP_C3() { JP(FetchWord()); } // JP a16
-void CPU::OP_C4() { uint16_t addr = FetchWord(); if (!reg.GetZ()) CALL(addr); } // CALL NZ
+void CPU::OP_C4() { uint16_t addr = FetchWord(); if (!reg.GetZ()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL NZ: 24 -> 12
 void CPU::OP_C5() { PushWord(reg.bc); } // PUSH BC
 void CPU::OP_C6() { ADD(FetchByte()); }
 void CPU::OP_C7() { RST(0x00); }
 
-void CPU::OP_C8() { if (reg.GetZ()) RET(); } // RET Z
+void CPU::OP_C8() { if (reg.GetZ()) RET(); else totalCyclesForInstruction -= 12; } // RET Z: 20 -> 8
 void CPU::OP_C9() { RET(); }
-void CPU::OP_CA() { uint16_t addr = FetchWord(); if (reg.GetZ()) JP(addr); } // JP Z
+void CPU::OP_CA() { uint16_t addr = FetchWord(); if (reg.GetZ()) JP(addr); else totalCyclesForInstruction -= 4; } // JP Z: 16 -> 12
 //void CPU::OP_CB() {  } // At the bottom of the file
-void CPU::OP_CC() { uint16_t addr = FetchWord(); if (reg.GetZ()) CALL(addr); } // CALL Z
+void CPU::OP_CC() { uint16_t addr = FetchWord(); if (reg.GetZ()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL Z: 24 -> 12
 void CPU::OP_CD() { CALL(FetchWord()); }
 void CPU::OP_CE() { ADDC(FetchByte()); }
 void CPU::OP_CF() { RST(0x08); }
 
 // --- 0xD0 - 0xDF ---
-void CPU::OP_D0() { if (!reg.GetC()) RET(); } // RET NC
+void CPU::OP_D0() { if (!reg.GetC()) RET(); else totalCyclesForInstruction -= 12; } // RET NC: 20 -> 8
 void CPU::OP_D1() { reg.de = PopWord(); } // POP DE
-void CPU::OP_D2() { uint16_t addr = FetchWord(); if (!reg.GetC()) JP(addr); } // JP NC
+void CPU::OP_D2() { uint16_t addr = FetchWord(); if (!reg.GetC()) JP(addr); else totalCyclesForInstruction -= 4; } // JP NC: 16 -> 12
 void CPU::OP_D3() {} // Unused
-void CPU::OP_D4() { uint16_t addr = FetchWord(); if (!reg.GetC()) CALL(addr); } // CALL NC
+void CPU::OP_D4() { uint16_t addr = FetchWord(); if (!reg.GetC()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL NC: 24 -> 12
 void CPU::OP_D5() { PushWord(reg.de); } // PUSH DE
 void CPU::OP_D6() { SUB(FetchByte()); }
 void CPU::OP_D7() { RST(0x10); }
 
-void CPU::OP_D8() { if (reg.GetC()) RET(); } // RET C
-void CPU::OP_D9() { RET(); EI(); } // RETI
-void CPU::OP_DA() { uint16_t addr = FetchWord(); if (reg.GetC()) JP(addr); } // JP C
+void CPU::OP_D8() { if (reg.GetC()) RET(); else totalCyclesForInstruction -= 12; } // RET C: 20 -> 8
+// --- CHANGED: RETI enables interrupts IMMEDIATELY ---
+void CPU::OP_D9() { RET(); ime = true; } // RETI
+void CPU::OP_DA() { uint16_t addr = FetchWord(); if (reg.GetC()) JP(addr); else totalCyclesForInstruction -= 4; } // JP C: 16 -> 12
 void CPU::OP_DB() {} // Unused
-void CPU::OP_DC() { uint16_t addr = FetchWord(); if (reg.GetC()) CALL(addr); } // CALL C
+void CPU::OP_DC() { uint16_t addr = FetchWord(); if (reg.GetC()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL C: 24 -> 12
 void CPU::OP_DD() {} // Unused
 void CPU::OP_DE() { SUBC(FetchByte()); }
 void CPU::OP_DF() { RST(0x18); }
@@ -647,9 +642,7 @@ void CPU::OP_E7() { RST(0x20); }
 void CPU::OP_E8() { ADD_SP_e8((int8_t)FetchByte()); }
 void CPU::OP_E9() { JP(reg.hl); } // JP (HL)
 void CPU::OP_EA() { bus->Write(FetchWord(), reg.a); } // LD (a16), A
-void CPU::OP_EB() {} // Unused
-void CPU::OP_EC() {} // Unused
-void CPU::OP_ED() {} // Unused
+// EB, EC, ED unused
 void CPU::OP_EE() { XOR(FetchByte()); }
 void CPU::OP_EF() { RST(0x28); }
 
@@ -677,7 +670,7 @@ void CPU::OP_FF() { RST(0x38); }
 void CPU::OP_CB()
 {
     uint8_t cb_op = FetchByte();
-    totalCyclesForInstruction += cbInstructions[cb_op].cycles; 
+    totalCyclesForInstruction += cbInstructions[cb_op].cycles;
 
     uint8_t reg_idx = cb_op & 0x07;
     uint8_t op_idx = (cb_op >> 3) & 0x1F;

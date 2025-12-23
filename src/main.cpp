@@ -78,8 +78,8 @@ int main(int argc, char* argv[])
 
     GameBoy gameboy;
     //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
-    gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/02-interrupts.gb");
-    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/03-op sp,hl.gb");
+    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/02-interrupts.gb");
+    gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/03-op sp,hl.gb");
 
 #ifdef _DEBUG
     Editor editor;
@@ -88,12 +88,6 @@ int main(int argc, char* argv[])
     // Main Loop
     bool done = false;
 
-//#ifdef GAMEBOY_DOCTOR
-//    while (!done)
-//    {
-//        gameboy.Update();
-//    }
-//#else
     while (!done)
     {
         SDL_Event event;

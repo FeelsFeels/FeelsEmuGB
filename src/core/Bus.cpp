@@ -91,8 +91,15 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrIO.Contains(addr))
 	{
-		// TODO: Redirect to Timer, Audio, PPU, etc.
-		if (addrIO_LCD_Control.Contains(addr))
+		if (addr == 0xFF0F)
+		{
+			return cpu->GetIF();
+		}
+		else if (addr >= 0xFF04 && addr <= 0xFF07)
+		{
+			return timer->Read(addr);
+		}
+		else if (addrIO_LCD_Control.Contains(addr))
 		{
 			return ppu->Read(addr);
 		}
@@ -150,7 +157,6 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrIO.Contains(addr))
 	{
-//#ifdef GAMEBOY_DOCTOR
 		// --- TEST ROM OUTPUT STUB ---
 		// Blargg's test ROMs write characters to 0xFF01
 		if (addr == 0xFF01)
@@ -160,20 +166,35 @@ void Bus::Write(Address addr, uint8_t data)
 			if (debugString.find("Passed") != std::string::npos)
 			{
 				std::cout << "\n\nTEST PASSED!\n";
-				//exit(0); // Stop the emulator
+
+#ifdef GAMEBOY_DOCTOR
+				exit(0);
+#endif
 			}
 
 			// Safety: If it fails, it usually prints "Failed"
 			if (debugString.find("Failed") != std::string::npos)
 			{
 				std::cout << "\n\nTEST FAILED!\n";
-				//exit(1);
+
+#ifdef GAMEBOY_DOCTOR
+				exit(1);
+#endif
 			}
 		}
 		// ----------------------------
-//#endif
 
-		if (addrIO_LCD_Control.Contains(addr))
+		if (addr == 0xFF0F)
+		{
+			cpu->SetIF(data);
+			return;
+		}
+		else if (addr >= 0xFF04 && addr <= 0xFF07)
+		{
+			timer->Write(addr, data);
+			return;
+		}
+		else if (addrIO_LCD_Control.Contains(addr))
 		{
 			ppu->Write(addr, data);
 		}
@@ -184,6 +205,7 @@ void Bus::Write(Address addr, uint8_t data)
 		}
 		else
 		{
+			// Fallback for unimplemented io in this range
 			io[addr & 0x7F] = data;
 		}
 	}
