@@ -1,6 +1,6 @@
 #pragma once
 
-#define GAMEBOY_DOCTOR
+//#define GAMEBOY_DOCTOR
 
 #if defined(_MSC_VER)
 #define DEBUG_BREAK() __debugbreak() // MSVC specific

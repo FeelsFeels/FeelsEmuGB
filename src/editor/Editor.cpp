@@ -66,7 +66,7 @@ bool RomBrowser::Draw(std::string* outPath)
                         {
                             *outPath = selectedFile;
                             fileSelected = true;
-                            isVisible = false;
+                            //isVisible = false;
                         }
                     }
                 }
@@ -80,7 +80,7 @@ bool RomBrowser::Draw(std::string* outPath)
         {
             *outPath = selectedFile;
             fileSelected = true;
-            isVisible = false;
+            //isVisible = false;
         }
     }
     ImGui::End();
@@ -158,6 +158,48 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
             r.GetN(),
             r.GetH(),
             r.GetC());
+
+
+        ImGui::Separator();
+
+        // --- Interrupts ---
+        ImGui::Text("IME: %s", gb.cpu.ime ? "ENABLED" : "DISABLED");
+
+        ImGui::Separator();
+
+        const uint8_t IF = gb.cpu.GetIF();
+        const uint8_t IE = gb.cpu.GetIE();
+
+        ImGui::Text("Interrupt Registers");
+        ImGui::Text("IF (FF0F): %02X", IF);
+        ImGui::Text("IE (FFFF): %02X", IE);
+
+        ImGui::Separator();
+
+        ImGui::Text("Interrupt Flags (IF)");
+        ImGui::Text("VBL: %d  LCD: %d  TIM: %d  SER: %d  JOY: %d",
+            (IF >> 0) & 1,
+            (IF >> 1) & 1,
+            (IF >> 2) & 1,
+            (IF >> 3) & 1,
+            (IF >> 4) & 1
+        );
+
+        ImGui::Separator();
+
+        ImGui::Text("Interrupt Enables (IE)");
+        ImGui::Text("VBL: %d  LCD: %d  TIM: %d  SER: %d  JOY: %d",
+            (IE >> 0) & 1,
+            (IE >> 1) & 1,
+            (IE >> 2) & 1,
+            (IE >> 3) & 1,
+            (IE >> 4) & 1
+        );
+        
+        ImGui::Separator();
+
+        const uint8_t pending = IF & IE;
+        ImGui::Text("Pending (IF & IE): %02X", pending);
     }
 
     ImGui::End();

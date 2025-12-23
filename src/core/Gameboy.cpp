@@ -51,13 +51,7 @@ int GameBoy::Update()
 		return 0;
 	}
 
-	int cycles = cpu.HandleInterrupts();
-
-	if (cycles == 0)
-	{
-		cycles = cpu.Tick();
-	}
-
+	int cycles = cpu.Tick();
 	ppu.Tick(cycles);
 
 	return cycles;

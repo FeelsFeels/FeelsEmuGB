@@ -107,7 +107,7 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrIE.Contains(addr))
 	{
-		return cpu->GETIE();
+		return cpu->GetIE();
 	}
 
 	ASSERT(false, "Unimplemented address range: %04X", addr);
@@ -138,7 +138,7 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrEchoRAM.Contains(addr))
 	{
-		wram[addrWRAM.GetOffset(addr)] = data;
+		wram[addrEchoRAM.GetOffset(addr)] = data;
 	}
 	else if (addrOAM.Contains(addr))
 	{
@@ -155,17 +155,16 @@ void Bus::Write(Address addr, uint8_t data)
 		// Blargg's test ROMs write characters to 0xFF01
 		if (addr == 0xFF01)
 		{
-			static std::string testOutput = "";
-			testOutput += (char)data;
+			debugString += (char)data;
 
-			if (testOutput.find("Passed") != std::string::npos)
+			if (debugString.find("Passed") != std::string::npos)
 			{
 				std::cout << "\n\nTEST PASSED!\n";
 				//exit(0); // Stop the emulator
 			}
 
 			// Safety: If it fails, it usually prints "Failed"
-			if (testOutput.find("Failed") != std::string::npos)
+			if (debugString.find("Failed") != std::string::npos)
 			{
 				std::cout << "\n\nTEST FAILED!\n";
 				//exit(1);

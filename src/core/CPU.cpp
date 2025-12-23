@@ -19,10 +19,31 @@ void CPU::ResetRegisters()
     reg.l = 0x4D;
     reg.pc = 0x0100;
     reg.sp = 0xFFFE;
+
+    ime = false;
+    imeNext = false;
+    halted = false;
+    stopped = false;
+    interruptFlag = 0xE1;
+    interruptFlagEnabled = 0x00;
 }
 
 int CPU::Tick()
 {
+
+    totalCyclesForInstruction = 0;
+    totalCyclesForInstruction = HandleInterrupts();
+
+    if (totalCyclesForInstruction > 0)
+        return totalCyclesForInstruction;
+
+    if (imeNext)
+    {
+        ime = true;
+        imeNext = false;
+    }
+
+
 #ifdef GAMEBOY_DOCTOR
     // Code for testing via GB doctor
     // LOG BEFORE EXECUTION (Standard requirement)
@@ -41,29 +62,10 @@ int CPU::Tick()
         pcmem[0], pcmem[1], pcmem[2], pcmem[3]
     );
     std::cout << logBuffer << "\n";
-
-    // EXECUTE
-    uint8_t opCode = bus->Read(reg.pc++);
-    totalCyclesForInstruction = 0;
-
-    if (instructions[opCode].execute)
-    {
-        (this->*instructions[opCode].execute)();
-    }
-    else
-    {
-        ASSERT(false, "Unimplemented Opcode: %02X", opCode);
-        //std::cout << " [ERROR: Unimplemented Opcode " << std::hex << (int)opCode << "]\n";
-    }
-
-    totalCyclesForInstruction += instructions[opCode].cycles;
-    return totalCyclesForInstruction;
 #endif
-
 
     uint8_t opcode = bus->Read(reg.pc++);
 
-    totalCyclesForInstruction = 0;
 
     (this->*instructions[opcode].execute)();
     totalCyclesForInstruction += instructions[opcode].cycles;   //CB instruction increments inside OP_CB()
@@ -88,7 +90,7 @@ int CPU::HandleInterrupts()
         halted = false;
     }
 
-    uint8_t interruptBitToHandle = -1;
+    int interruptBitToHandle = -1;
     if (ime && interrupts)
     {
         ime = false;
@@ -104,6 +106,7 @@ int CPU::HandleInterrupts()
         if (interruptBitToHandle != -1)
         {
             interruptFlag &= ~(1 << interruptBitToHandle);
+            printf("INTERRUPT FIRED: Bit %d at PC:%04X\n", interruptBitToHandle, reg.pc);
         }
 
         switch (interruptBitToHandle)
@@ -118,6 +121,7 @@ int CPU::HandleInterrupts()
         }
         return 20;
     }
+
     return 0;
 }
 
@@ -148,6 +152,11 @@ int CPU::HandleInterrupts()
 uint8_t CPU::FetchByte()
 {
     return bus->Read(reg.pc++);
+}
+
+int8_t CPU::FetchByteSigned()
+{
+    return (int8_t)bus->Read(reg.pc++);
 }
 
 uint16_t CPU::FetchWord()

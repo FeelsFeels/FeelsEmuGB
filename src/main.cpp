@@ -77,8 +77,8 @@ int main(int argc, char* argv[])
 #pragma endregion
 
     GameBoy gameboy;
-    gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
-    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/02-interrupts.gb");
+    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
+    gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/02-interrupts.gb");
     //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/03-op sp,hl.gb");
 
 #ifdef _DEBUG

@@ -21,7 +21,7 @@ public:
 	void RequestInterrupt(InterruptCode bit);
 
 	uint8_t GetIF()			{ return interruptFlag; }
-	uint8_t GETIE()			{ return interruptFlagEnabled ;}
+	uint8_t GetIE()			{ return interruptFlagEnabled ;}
 	void SetIF(uint8_t val) { interruptFlag = val; }
 	void SetIE(uint8_t val) { interruptFlagEnabled = val; }
 
@@ -71,6 +71,7 @@ private:
 #pragma region Instructions
 	// Helpers for instructions
 	uint8_t  FetchByte();	// from pc
+	int8_t  FetchByteSigned();	// from pc
 	uint16_t FetchWord();
 	uint8_t  PopByte();		// pop/push from stack (sp)
 	uint16_t PopWord();

@@ -20,7 +20,13 @@ public:
 	void RequestInterrupt(InterruptCode bit);
 
 
-	void AttachCartridge(Cartridge* cart) { cartridge = cart; }
+	void AttachCartridge(Cartridge* cart) 
+	{ 
+		debugString.clear(); cartridge = cart; 
+		std::fill(wram.begin(), wram.end(), 0); 
+		std::fill(hram.begin(), hram.end(), 0);
+		std::fill(io.begin(), io.end(), 0);
+	}
 	void RemoveCartridge() { cartridge = nullptr; }
 
 	void AttachCPU(CPU* p) { cpu = p; }
@@ -42,4 +48,5 @@ private:
 	std::array<uint8_t, 127> hram;
 	std::array<uint8_t, 128> io;	// TODO: this is temporary. this is memory for the components i have not yet implemented.
 
+	std::string debugString{};
 };
