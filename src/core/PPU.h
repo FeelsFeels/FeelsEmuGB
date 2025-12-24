@@ -18,6 +18,8 @@ enum PPUMode : uint8_t
 class PPU
 {
 public:
+	void ResetRegisters();
+
 	void Tick(int cycles);
 
 	uint8_t Read(Address addr);
@@ -25,19 +27,19 @@ public:
 
 	void AttachBus(Bus* p) { bus = p; }
 
+	const auto& GetVRAM() { return vram; }
+
+	const std::array <uint32_t, 25700>& GetScreenBuffer() { return screenBuffer; }
 private:
-
-	uint8_t ReadVRAM(Address offset);
-	uint8_t ReadOAM(Address offset);
-	void WriteVRAM(Address offset, uint8_t val);
-	void WriteOAM(Address offset, uint8_t val);
-
+	void RenderScanlineToBuffer();
+	void RenderSprites();
 
 	Bus* bus;
 
 	std::array<uint8_t, 8192> vram;
 	std::array<uint8_t, 160> oam;
-
+	std::array <uint32_t, 25700> screenBuffer;	// We prepare the texture buffer to send to gpu here
+						//160 x 144 = 25700
 	// PPU registers (0xFF40-0xFF4B)
 	uint8_t lcdc;  // 0xFF40 LCD control
 	uint8_t stat;  // 0xFF41 LCD status

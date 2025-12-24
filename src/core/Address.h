@@ -30,6 +30,7 @@ struct AddressRange
 	Address start, end;
 };
 
+//Main Mapping
 static constexpr AddressRange addrCart{ 0x0000, 0x7FFF };
 static constexpr AddressRange addrVRAM{ 0x8000, 0x9FFF };
 static constexpr AddressRange addrExtRAM{ 0xA000, 0xBFFF };
@@ -42,5 +43,5 @@ static constexpr AddressRange addrHRAM{ 0xFF80, 0xFFFE };
 static constexpr AddressRange addrIE{ 0xFFFF, 0xFFFF };
 
 
-// Specifically the ranges inside IO
+// Extra specific ranges/addresses within the main memory map
 static constexpr AddressRange addrIO_LCD_Control { 0xFF40, 0xFF4B };

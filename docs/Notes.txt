@@ -57,6 +57,7 @@ FFFF	FFFF	Interrupt Enable register (IE)
 On the Memory Bank Controller (MBC):
 https://retrocomputing.stackexchange.com/questions/11732/how-does-the-gameboys-memory-bank-switching-work
 
+============================================
 
 On "Registers":
 The CPU has registers, but the docs also mention the cartridge having registers.
@@ -71,6 +72,7 @@ HL register is usually the only register that can be used for addresses when acc
 
 Two more registers, SP & PC, for stack and program pointer.
 
+============================================
 
 On Opcodes / execution:
 Similar to what an OS module would have taught.
@@ -80,6 +82,8 @@ Memory:
 [PC+1]   -> 0x42        (the n8 value = 66)
 [PC+2]   -> next opcode
 
+HALT bug: honestly i still really don't understand. Will update if i ever fully internalize this.
+============================================
 
 On CPU Flags:
 Documentation for the Half-carry flag for 16 bit additions
@@ -101,6 +105,7 @@ Opcode 0xE8, ADD SP,e8
 H-flag set when bit 3 overflows to bit 4
 https://stackoverflow.com/questions/57958631/game-boy-half-carry-flag-and-16-bit-instructions-especially-opcode-0xe8
 
+============================================
 
 On the Boot ROM:
 Exists in 0000-00FF. Recall that the entry point of the cartridge is 0100-0103.
@@ -108,10 +113,36 @@ This small program, the boot ROM, is burned inside the CPU, and is mapped over (
 This means that the boot ROM supercedes the cartridge code inside 0000-00FF until it finishes.
 After finishing, the boot ROM hands off control to the cartridge at 0x0100.
 
+============================================
 
 On the Timer:
 https://github.com/Ashiepaws/GBEDG/blob/master/timers/index.md
+Timer registers:
+*UINT16_T* div { 0 };	// Divider. Always increments at a rate of rate of 16384Hz. This is your "true" counter of how many cycles have passed
+uint8_t tima{ 0 };	    // Timer counter. Increments at TAC frequency. 
+uint8_t tma { 0 };	    // Modulo. tima resets to tma when tima overflows.
+uint8_t tac { 0 };      // Controller. Controls timer enabled, clock speed, etc
 
+TIMA, on overflow, triggers a hardware TIMER interrupt.
+TIMA ticks on falling edge, that is, when the target bit on DIV(target controlled in tac), goes from 1 -> 0, tima increments.
+Timer bug - this falling edge detector actually depends on BOTH timerEnabled and the target bit, so writing to tac at sometimes would trigger tima++.
+
+============================================
+
+On Input:
+    5       4
+    A      Right   0
+    B      Left    1
+  Start    Up      2
+  Select   Down    3
+
+The gameboy writes to 0xFF00, the input register, to select if it wants to read the left or right column of inputs.
+Game dev's process if they want to read, say, START
+Write 0b 1101 1111 to 0xFF00
+Read from 0xFF00. If only start was pressed, 0xFF00 would contain 0b 1101 1011
+For gameboy input, if bit == 0, button is down. Same goes for the "Selector"
+
+============================================
 
 On Graphics:
 https://www.huderlem.com/demos/gameboy2bpp.html
@@ -129,10 +160,58 @@ For example, the second line: 7E (low byte) FF (high byte)
 1111 1111
 0111 1110
 for the first pixel, we combine the high and low bytes to get a pixel color of 10 (color 3)
-for the second pixel, 11.
+for the second pixel, 11. These two bits are what is called "color index", for the OAM priority later.
+
+Graphics related registers
+uint8_t lcdc;  // 0xFF40 LCD control https://gbdev.io/pandocs/LCDC.html#ff40--lcdc-lcd-control
+uint8_t stat;  // 0xFF41 LCD status
+uint8_t scy;   // 0xFF42 Viewport Y position
+uint8_t scx;   // 0xFF43 Viewport X position
+uint8_t ly;    // 0xFF44 LCD Y coordinate
+uint8_t lyc;   // 0xFF45 LY compare
+uint8_t bgp;   // 0xFF47 BD palette data
+
+uint8_t wy;   // 0xFF4A Window position Y
+uint8_t wx;   // 0xFF4B Window position X
 
 
-Object, an entry in object attribute memory, composed of 1 or 2 tiles. Can be moved independently of the background.
+Background:
+A 256x256 tilemap. Tiles only contain references to the tiles in VRAM.
+But each tile in the tilemap can only store values of 0-255, while VRAM can store 384 tiles.
+There is an additional setting in lcdc, ""BG & Window tiles", bit 4, which controls which "half" you are referencing.
+0 being 0x8800-0x97FF, and 1 being 0x8000-0x8FFF in vram. Note the overlap! 0x8800-0x8FFF is overlapped! A 128 tile overlap.
+
+Background can also be scrolled via scy and scx registers. These two register specify the top-left coordinates of the 160 x 144 window.
+If values are larger than 255, like in the case of when scx = 40, (40 + 159) = 199, they loop around the screen.
+
+
+Window:
+wy and wx specify the Window's top-left pixel.
+Windows are frequently used for immovable ui, like healthbar at the bottom of kirby.
+
+OAM (object attribute map/memory) - think of these as objects / sprites
+Controlled through 0xFF40 bit 1 and 2. Bit 1 enables/disables. Bit 2 controls size: 0 = 8x8, 1 = 8 x 16.
+
+An object, an entry in OAM, is composed of 1 or 2 tiles(8x8 or 8x16 pixels). Can be moved independently of the background.
+Limitation of hardware allows only 10 objects per scanline (row). Objects out of the screen, within the 256x256 BG map still contributes to the limitation.
+
+Each object has an OAM Entry consisting of 4 bytes - Y Pos, X Pos, Tile Index, and Attributes. Stored in 0xFE00-0xFE9F
+Positions are (0,0) at the top left. Objects anchored/origin at top right.
+Position Y - for BOTH 8x8 and 8x16 sprites, 0x10(16 in decimal) will have its top border touching the top edge of the screen.
+Position X - for a 8x8 sprite the "anchor is on the right". Meaning 0x00 will have it's right border at the leftmost edge of the screen. 
+             0x04 is half cut off, 0x08 has left border touching leftmost edge.
+Tile Index - in 8x8 mode, specifies tile index in vram. this means that only tiles from 0x8000-0x8FFF can be selected.
+             in 8x16 mode, byte1 is top tile, byte2, the one that follows right after, is the bottom tile of the sprite.
+CGB Palette, Bank: cgb mode only. im not supporting yet
+DMG Palette - 0 uses OBP0, 0xFF48, 1 uses OBP1, 0xFF49
+Flip X - Self explanatory
+Flip Y - Self explanatory
+Priority - if 1, BG and Window color indices 1-3 are drawn over this sprite.
+
+
+
+On Palettes:
+
 
 Timing for graphics:
 GB resolution: 160 x 144
@@ -142,8 +221,15 @@ The gameboy's screen height is 144 pixels, and the PPU also defines a 10 extra s
 One scanline is drawn in 456 dots, so total times taken for one frame is 456 x 154 = 70244 dots.
 This 456 value is computed as such:
 Each scanline is drawn in 3 phases - OAM retrival (always 80 dots), Drawing(172-289 dots), H-Blank(87-204 dots).
-The H blank actual duration seems to be 87, but will compensate and take extra time depending on how fast the drawing stage took, leading to a consistent 456 dot timing for one scanline.
+The H blank actual duration seems to be 87, but will compensate and take extra time depending on how fast the drawing stage took, 
+leading to a consistent 456 dot timing for one scanline.
 
+To be exact, the drawing is controlled by this thing called Pixel FIFO.
+PPU holds 16 pixels at once to be drawn in a queue.
+The ppu draws one pixel per screen per clock, and pauses unless it contains more than 8 pixels.
+When fetching more pixels, 3 clocks are needed + 1 idle clock.
+
+============================================
 
 On Interrupts:
 3 main parts that control the interrupt system.

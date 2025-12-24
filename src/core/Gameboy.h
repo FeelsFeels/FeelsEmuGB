@@ -4,6 +4,7 @@
 #include "Timer.h"
 #include "CPU.h"
 #include "PPU.h"
+#include "Joypad.h"
 
 #include <memory>
 
@@ -19,9 +20,13 @@ public:
 	const std::string& GetCartPath() const { return pathToCartridge; };
 
 	int Update();
+	const std::array <uint32_t, 25700>& GetScreenBuffer() { return ppu.GetScreenBuffer(); }
+
+	void UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboard);
 
 private:
 	friend class DebugInfo;
+	friend class VRAMBrowser;
 
 	std::string pathToCartridge;
 	std::shared_ptr<Cartridge> cart;
@@ -30,4 +35,5 @@ private:
 	CPU cpu;
 	PPU ppu;
 	Timer timer;
+	Joypad joypad;
 };

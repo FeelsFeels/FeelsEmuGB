@@ -2,6 +2,7 @@
 #include "Timer.h"
 #include "CPU.h"
 #include "PPU.h"
+#include "Joypad.h"
 
 void Bus::RunBootRom()
 {
@@ -81,9 +82,7 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrOAM.Contains(addr))
 	{
-		// TODO: PPU OAM STILL NOT DONE
 		return ppu->Read(addr);
-		return 0xFF;
 	}
 	else if (addrUnused.Contains(addr))
 	{
@@ -91,6 +90,10 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrIO.Contains(addr))
 	{
+		if (addr == 0xFF00)
+		{
+			return joypad->GetInput();
+		}
 		if (addr == 0xFF0F)
 		{
 			return cpu->GetIF();
@@ -119,7 +122,6 @@ uint8_t Bus::Read(Address addr)
 
 	ASSERT(false, "Unimplemented address range: %04X", addr);
 	return 0xFF;
-
 }
 
 void Bus::Write(Address addr, uint8_t data)
@@ -157,33 +159,10 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrIO.Contains(addr))
 	{
-		// --- TEST ROM OUTPUT STUB ---
-		// Blargg's test ROMs write characters to 0xFF01
-		if (addr == 0xFF01)
+		if (addr == 0xFF00) // Joypad input
 		{
-			debugString += (char)data;
-
-			if (debugString.find("Passed") != std::string::npos)
-			{
-				std::cout << "\n\nTEST PASSED!\n";
-
-#ifdef GAMEBOY_DOCTOR
-				exit(0);
-#endif
-			}
-
-			// Safety: If it fails, it usually prints "Failed"
-			if (debugString.find("Failed") != std::string::npos)
-			{
-				std::cout << "\n\nTEST FAILED!\n";
-
-#ifdef GAMEBOY_DOCTOR
-				exit(1);
-#endif
-			}
+			joypad->Write(data);
 		}
-		// ----------------------------
-
 		if (addr == 0xFF0F)
 		{
 			cpu->SetIF(data);
@@ -193,6 +172,10 @@ void Bus::Write(Address addr, uint8_t data)
 		{
 			timer->Write(addr, data);
 			return;
+		}
+		else if (addr == 0xFF46)
+		{
+			DMATransfer(data);
 		}
 		else if (addrIO_LCD_Control.Contains(addr))
 		{
@@ -216,6 +199,21 @@ void Bus::Write(Address addr, uint8_t data)
 	else if (addrIE.Contains(addr))
 	{
 		cpu->SetIE(data);
+	}
+}
+
+void Bus::DMATransfer(uint8_t data)
+{
+	// Source: $XX00-$XX9F   ;XX = $00 to $DF
+	// Destination: $FE00-$FE9F
+	// In other words, 0x100 bytes from source to dest. 
+
+	uint16_t address = data << 8;	// Divided by 0x100
+
+	for (int i = 0; i < 160; i++)
+	{
+		uint8_t val = Read(address + i);
+		ppu->Write(0xFE00 + i, val);
 	}
 }
 

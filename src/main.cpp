@@ -2,6 +2,7 @@
 #include "utils/Filepaths.h"
 #include "core/Gameboy.h"
 #include "editor/Editor.h"
+#include "graphics/Renderer.h"
 
 #include <glad/glad.h>
 #include <SDL.h>
@@ -14,6 +15,13 @@
 // Screen dimensions
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
+
+
+
+void HandleInput(GameBoy& gb)
+{
+
+}
 
 
 int main(int argc, char* argv[])
@@ -76,20 +84,29 @@ int main(int argc, char* argv[])
     ImGui_ImplOpenGL3_Init(glsl_version);
 #pragma endregion
 
-    GameBoy gameboy;
-    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
-    gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/02-interrupts.gb");
-    //gameboy.InsertCartridge("blargg_test_roms/cpu_instrs/individual/03-op sp,hl.gb");
+    GameBoy* gameboy = new GameBoy();
+    gameboy->InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
+
+    Renderer renderer;
+    renderer.Init();
+    GLuint gameTexture = renderer.CreateTexture(160, 144);
 
 #ifdef _DEBUG
     Editor editor;
+    editor.Init(&renderer);
 #endif
 
-    // Main Loop
-    bool done = false;
+    // Keyboard input
+    std::unordered_map<SDL_Scancode, ButtonState> keyboard;
 
+    bool done = false;
     while (!done)
     {
+        for (auto& [key, state] : keyboard)
+        {
+            state.pressed = false;
+            state.released = false;
+        }
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -98,6 +115,19 @@ int main(int argc, char* argv[])
                 done = true;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 done = true;
+
+            if (event.type == SDL_KEYDOWN && !event.key.repeat)
+            {
+                auto& key = keyboard[event.key.keysym.scancode];
+                key.down = true;
+                key.pressed = true;
+            }
+            if (event.type == SDL_KEYUP)
+            {
+                auto& key = keyboard[event.key.keysym.scancode];
+                key.down = false;
+                key.released = true;
+            }
         }
 
         ImGui_ImplOpenGL3_NewFrame();
@@ -106,21 +136,37 @@ int main(int argc, char* argv[])
 
         // IMGUI CODE
 #ifdef _DEBUG
-        editor.Render(gameboy);
+        editor.Render(*gameboy);
 #endif
 
-        // GAMEBOY RENDERING HERE
+        // GAMEBOY LOOP HERE
         // Run CPU for 1 frame
         // Update Texture with PPU pixels
+        gameboy->UpdateInput(keyboard);
         const int CYCLES_PER_FRAME = 70224;
         int cyclesThisFrame = 0;
+
         while (cyclesThisFrame < CYCLES_PER_FRAME)
         {
-            int cycles = gameboy.Update();
+            int cycles = gameboy->Update();
             if (cycles <= 0) break;
             cyclesThisFrame += cycles;
         }
+        renderer.UpdateTexture(gameTexture, 160, 144, gameboy->GetScreenBuffer().data());
 
+        // Show game in ImGui Window
+        static float aspectRatio = 160.f / 144.f;
+        ImGui::Begin("Game Viewport");
+        {
+            ImVec2 region = ImGui::GetContentRegionAvail();
+            float targetH = region.x / aspectRatio;
+            
+            ImGui::Image((void*)(intptr_t)gameTexture, ImVec2(region.x, targetH));
+        }
+        ImGui::End();
+
+
+        ImGui::Render();
         // Rendering
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f); // Clear background
@@ -133,6 +179,8 @@ int main(int argc, char* argv[])
         SDL_GL_SwapWindow(window);
     }
 //#endif
+
+    delete gameboy;
 
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();

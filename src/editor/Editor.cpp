@@ -2,12 +2,134 @@
 #include "../utils/VFS/VFS.h"
 
 
+void VRAMBrowser::Init(Renderer* p)
+{
+    renderer = p;
+    textureID = renderer->CreateTexture(WIDTH, HEIGHT);
+    pixelBuffer.resize(WIDTH * HEIGHT);
+}
+
+void VRAMBrowser::UpdateBuffer(GameBoy& gb)
+{
+    const auto& vram = gb.ppu.GetVRAM();
+
+    // Loop through all 384 Tiles
+    for (int tileIndex = 0; tileIndex < 384; tileIndex++)
+    {
+        // Calculate where to draw this tile in our big 128x192 texture
+        int tileX = tileIndex % 16;
+        int tileY = tileIndex / 16;
+
+        // VRAM Address for this tile (16 bytes per tile)
+        int tileAddress = tileIndex * 16;
+
+        // Loop through 8 rows of the tile
+        for (int row = 0; row < 8; row++)
+        {
+            // Read the two bytes that define this row
+            // Byte 1 (Low Bits) is at offset: row * 2
+            // Byte 2 (High Bits) is at offset: row * 2 + 1
+            uint8_t byte1 = vram[tileAddress + (row * 2)];
+            uint8_t byte2 = vram[tileAddress + (row * 2) + 1];
+
+            // Loop through 8 pixels in the row (Bit 7 down to 0)
+            for (int bit = 7; bit >= 0; bit--)
+            {
+                // Extract the bits
+                uint8_t lo = (byte1 >> bit) & 1;
+                uint8_t hi = (byte2 >> bit) & 1;
+
+                // Combine: (Hi << 1) | Lo  -> Results in 0, 1, 2, or 3
+                int colorIndex = (hi << 1) | lo;
+                uint32_t color = palette[colorIndex];
+
+                // Plot to our big pixel buffer
+                // Buffer Index = (GlobalY * Width) + GlobalX
+                // GlobalX = (TileX * 8) + (7 - bit)  <-- '7-bit' because bit 7 is pixel 0 (leftmost)
+                // GlobalY = (TileY * 8) + row
+                int x = (tileX * 8) + (7 - bit);
+                int y = (tileY * 8) + row;
+
+                pixelBuffer[y * WIDTH + x] = color;
+            }
+        }
+    }
+
+    // Upload to GPU
+    renderer->UpdateTexture(textureID, WIDTH, HEIGHT, pixelBuffer.data());
+}
+
+void VRAMBrowser::Draw(GameBoy& gb, ImGuiIO& io)
+{
+    if (!isVisible) return;
+
+    UpdateBuffer(gb);
+
+    if (ImGui::Begin("VRAM", &isVisible))
+    {
+        float scale = 2.0f;
+        ImVec2 imageSize(WIDTH * scale, HEIGHT * scale);
+
+        ImVec2 uv0(0, 0);
+        ImVec2 uv1(1, 1);
+        // Store cursor position BEFORE drawing so we know where top-left is
+        ImVec2 pMin = ImGui::GetCursorScreenPos();
+        ImVec2 pMax = ImVec2(pMin.x + imageSize.x, pMin.y + imageSize.y);
+
+        ImGui::Image((void*)(intptr_t)textureID, imageSize, uv0, uv1);
+
+        // Draw Grid Overlay
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+        // Vertical Lines
+        for (int x = 0; x <= 16; x++) // 16 columns
+        {
+            float xPos = pMin.x + (x * 8 * scale);
+            drawList->AddLine(ImVec2(xPos, pMin.y), ImVec2(xPos, pMax.y), IM_COL32(150, 150, 150, 150));
+        }
+        // Horizontal Lines
+        for (int y = 0; y <= 24; y++) // 24 rows
+        {
+            float yPos = pMin.y + (y * 8 * scale);
+            drawList->AddLine(ImVec2(pMin.x, yPos), ImVec2(pMax.x, yPos), IM_COL32(150, 150, 150, 150));
+        }
+
+        // Mouse Over Logic
+        if (ImGui::IsItemHovered())
+        {
+            ImGuiIO& io = ImGui::GetIO();
+            float mouseLocalX = io.MousePos.x - pMin.x;
+            float mouseLocalY = io.MousePos.y - pMin.y;
+
+            int tileX = (int)(mouseLocalX / (8 * scale));
+            int tileY = (int)(mouseLocalY / (8 * scale));
+
+            // Safety Clamp
+            if (tileX >= 0 && tileX < 16 && tileY >= 0 && tileY < 24)
+            {
+                int tileIndex = (tileY * 16) + tileX;
+                int address = 0x8000 + (tileIndex * 16);
+
+                // Popup
+                ImGui::BeginTooltip();
+                ImGui::Text("Tile Index: %d (0x%02X)", tileIndex, tileIndex);
+                ImGui::Text("Memory Address: 0x%04X", address);
+                ImGui::Text("Grid Pos: (%d, %d)", tileX, tileY);
+                // Bonus: Show the tile enlarged?
+                ImGui::EndTooltip();
+            }
+        }
+    }
+    ImGui::End();
+
+}
+
 bool RomBrowser::Draw(std::string* outPath)
 {
     if (!isVisible) return false;
     bool fileSelected = false;
 
-    if (ImGui::Begin("Load ROM (VFS)", &isVisible))
+    if (ImGui::Begin("Load ROM", &isVisible))
     {
         // Navigation Bar
         if (!currentPath.empty())
@@ -232,7 +354,31 @@ void Editor::Render(GameBoy& gb)
 
     debugInfo.Draw(gb, io);
     cartInfo.Draw(gb, io);
+    vramBrowser.Draw(gb, io);
+}
 
 
-    ImGui::Render();
+
+
+
+// ImGui Helpers
+ImVec2 GetWindowChromeSize()
+{
+    ImGuiStyle& style = ImGui::GetStyle();
+    float titleBar = ImGui::GetFontSize() + style.FramePadding.y * 2.0f;
+
+    return ImVec2(
+        style.WindowPadding.x * 2.0f,
+        style.WindowPadding.y * 2.0f + titleBar
+    );
+}
+
+void CustomConstraintsCallBack(ImGuiSizeCallbackData* data)
+{
+    float aspect = *(float*)data->UserData;
+
+    ImVec2 size = data->CurrentSize;
+    size.y = size.x / aspect;
+
+    data->DesiredSize = size;
 }

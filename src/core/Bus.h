@@ -7,6 +7,7 @@
 class Timer;
 class CPU;
 class PPU;
+class Joypad;
 
 // Think of this as the motherboard
 class Bus
@@ -17,6 +18,7 @@ public:
 
 	uint8_t Read(Address addr);
 	void Write(Address addr, uint8_t data);
+	void DMATransfer(uint8_t data);
 	void RequestInterrupt(InterruptCode bit);
 
 
@@ -32,6 +34,7 @@ public:
 	void AttachCPU(CPU* p) { cpu = p; }
 	void AttachPPU(PPU* p) { ppu = p; }
 	void AttachTimer(Timer* p) { timer = p; }
+	void AttachJoypad(Joypad* p) { joypad = p; }
 
 	void RunBootRom();
 
@@ -40,6 +43,7 @@ private:
 	CPU* cpu;
 	PPU* ppu;
 	Timer* timer;
+	Joypad* joypad;
 
 	bool cgbMode = false;
 	bool bootRomEnabled = false;
