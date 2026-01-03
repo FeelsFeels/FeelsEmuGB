@@ -30,7 +30,7 @@ struct AddressRange
 	Address start, end;
 };
 
-//Main Mapping
+// Main Mapping
 static constexpr AddressRange addrCart{ 0x0000, 0x7FFF };
 static constexpr AddressRange addrVRAM{ 0x8000, 0x9FFF };
 static constexpr AddressRange addrExtRAM{ 0xA000, 0xBFFF };
@@ -45,3 +45,14 @@ static constexpr AddressRange addrIE{ 0xFFFF, 0xFFFF };
 
 // Extra specific ranges/addresses within the main memory map
 static constexpr AddressRange addrIO_LCD_Control { 0xFF40, 0xFF4B };
+
+// MBC address ranges
+static constexpr AddressRange addrROMBank0		       { 0x0000, 0x3FFF };
+static constexpr AddressRange addrROMBankSwitchable    { 0x4000, 0x7FFF };
+
+static constexpr AddressRange addrRAMEnable		       { 0x0000, 0x1FFF };
+static constexpr AddressRange addrBankSelector		   { 0x2000, 0x3FFF };
+static constexpr AddressRange addrBankSelector2		   { 0x4000, 0x5FFF };
+static constexpr AddressRange addrBankingMode		   { 0x6000, 0x7FFF };
+
+

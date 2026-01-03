@@ -27,6 +27,26 @@ private:
 	void UpdateBuffer(GameBoy& gb);
 };
 
+struct TileMapBrowser
+{
+	void Init(Renderer* p); // Init OpenGL stuff
+	void Draw(GameBoy& gb, ImGuiIO& io);
+
+	unsigned int textureID = 0;
+	static const int WIDTH = 256; // 32 tiles x 8 pixels = 128
+	static const int HEIGHT = 256;
+	std::vector<uint32_t> pixelBuffer;
+	const uint32_t palette[4] = { 0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000 };
+
+	bool isVisible = true;
+	Renderer* renderer;
+
+private:
+	void UpdateBuffer(GameBoy& gb);
+	bool showTilemap2 = false;
+	bool drawViewportBox = true;
+};
+
 struct RomBrowser
 {
 	std::string currentPath = "";
@@ -51,6 +71,12 @@ struct DebugInfo
 	void Draw(GameBoy& gb, ImGuiIO& io);
 };
 
+struct ControlPanel
+{
+	bool isVisible = true;
+	void Draw(GameBoy& gb, ImGuiIO& io);
+};
+
 class Editor
 {
 public:
@@ -58,15 +84,17 @@ public:
 	~Editor() = default;
 
 	void Render(GameBoy& gb);
-	void Init(Renderer* p) { renderer = p; vramBrowser.Init(renderer); }
+	void Init(Renderer* p);
 
 private:
 	Renderer* renderer;
 
 	DebugInfo debugInfo;
 	CartInfo cartInfo;
+	ControlPanel controlPanel;
 	RomBrowser romBrowser;
 	VRAMBrowser vramBrowser;
+	TileMapBrowser tileMapBrowser;
 };
 
 

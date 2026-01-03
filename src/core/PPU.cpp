@@ -14,6 +14,10 @@ void PPU::ResetRegisters()
     ly = 0x91;
     lyc = 0x00;
     bgp = 0xFC;
+    obp0 = 0x00; // NOTE: actual behaviour for obp is left uninitialized, but most often 0x00 or 0xFF.
+    obp1 = 0x00; //       set as 00 since the emulator supports switching roms during runtime.
+    wy = 0x00;
+    wx = 0x00;
 
     std::fill(vram.begin(), vram.end(), 0);
     std::fill(oam.begin(), oam.end(), 0);
@@ -27,30 +31,48 @@ void PPU::Tick(int cycles)
 
     if (dots <= 80)
     {
-        mode = PPUMode::OAM_SCAN;
+        if (mode != PPUMode::OAM_SCAN)
+        {
+            mode = PPUMode::OAM_SCAN;
+            UpdateSTATInterrupt();
+        }
     }
     else if (dots <= 252)
     {
-        mode = PPUMode::DRAWING;
+        if (mode != PPUMode::DRAWING)
+        {
+            mode = PPUMode::DRAWING;
+            UpdateSTATInterrupt();
+        }
     }
     else if (dots < 456)
     {
-        if (mode == PPUMode::DRAWING)
+        if (mode != PPUMode::HBLANK)
         {
             RenderScanlineToBuffer();
+            mode = PPUMode::HBLANK;
+            UpdateSTATInterrupt();
         }
-        mode = PPUMode::HBLANK;
     }
     else
     {
         dots -= 456;
         ly++; // Move to next line
 
+        if (ly == lyc)
+        {
+            stat |= 0x04; // Bit 2
+        }
+        else
+        {
+            stat &= ~0x04; // Clear Bit 2
+        }
+        UpdateSTATInterrupt();
+
         if (ly == 144)
         {
             mode = PPUMode::VBLANK;
-
-            // Tell the Bus to Request Interrupt
+            UpdateSTATInterrupt();
             bus->RequestInterrupt(InterruptCode::VBLANK);
         }
 
@@ -83,6 +105,10 @@ uint8_t PPU::Read(Address addr)
     case 0xFF44: return ly;
     case 0xFF45: return lyc;
     case 0xFF47: return bgp;
+    case 0xFF48: return obp0;
+    case 0xFF49: return obp1;
+    case 0xFF4A: return wy;
+    case 0xFF4B: return wx;
     default: return 0xFF;
     }
 }
@@ -101,28 +127,38 @@ void PPU::Write(Address addr, uint8_t data)
     switch (addr)
     {
     case 0xFF40: lcdc = data; break;
-    case 0xFF41: stat = data; break; // Note: Some bits are read-only
+    case 0xFF41: stat = data; UpdateSTATInterrupt();  break; // Note: Some bits are read-only
     case 0xFF42: scy = data; break;
     case 0xFF43: scx = data; break;
     case 0xFF44: ly = 0; break; // LY is Read-Only! Reset on write
-    case 0xFF45: lyc = data; break;
+    case 0xFF45: 
+        lyc = data; 
+        if (ly == lyc) stat |= 0x04; 
+        else stat &= ~0x04;
+        UpdateSTATInterrupt();
+        break;
     case 0xFF47: bgp = data; break;
+    case 0xFF48: obp0 = data; break;
+    case 0xFF49: obp1 = data; break;
+    case 0xFF4A: wy = data; break;
+    case 0xFF4B: wx = data; break;
     }
 }
 
 void PPU::RenderScanlineToBuffer()
 {
+    const uint32_t paletteColors[4] = { 0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000 };
+    
     //Check LCD Control Register for settings
     bool lcdEnabled = (lcdc & 0x80); // bit 7
     bool bgEnabled = (lcdc & 0x01); // bit 0
+    bool windowEnabled = (lcdc & 0x20); // bit 5
 
     if (!lcdEnabled) return; // Screen is off
 
     // Background Rendering
     if (bgEnabled)
     {
-        const uint32_t paletteColors[4] = { 0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000 };
-
         // Determine which Tile Map to use
         uint8_t tileMap = (lcdc & 0x08); // bit 3: 0=9800-9BFF, 1=9C00-9FFF
         uint16_t mapBase = tileMap ? 0x9C00 : 0x9800;
@@ -190,6 +226,61 @@ void PPU::RenderScanlineToBuffer()
         }
     }
 
+    if (bgEnabled && windowEnabled && wy <= ly)
+    {
+        // Address Base of the tilemap to use
+        uint16_t winMapBase = (lcdc & 0x40) ? 0x9C00 : 0x9800; // Bit 6
+
+        bool signedAddressing = !(lcdc & 0x10); //  (Bit 4: 0=8800-97FF, 1=8000-8FFF)
+        uint16_t dataBase = signedAddressing ? 0x9000 : 0x8000;
+
+        // Window Row = LY(where hardware is drawing) - WY(where the game specifies the window position)
+        uint8_t winY = ly - wy; // Relative Y within the window map.
+        uint16_t tileRow = (winY / 8) * 32;
+        uint8_t fineY = winY % 8;
+
+        for (int x = 0; x < 160; x++)
+        {
+            // WX is offset by 7. If WX=7, window starts at X=0.
+            // If x < (wx - 7), we are to the left of the window.
+            int winX = x - (wx - 7);
+
+            if (winX < 0) continue; // Window hasn't started on this line yet
+
+            uint16_t tileCol = winX / 8;
+            Address tileAddress = winMapBase + tileRow + tileCol;
+
+            uint8_t tileIndex = vram[addrVRAM.GetOffset(tileAddress)];
+
+            Address tileDataAddr;
+            if (signedAddressing)
+                tileDataAddr = 0x9000 + ((int8_t)tileIndex * 16);
+            else
+                tileDataAddr = 0x8000 + (tileIndex * 16);
+
+            uint8_t byte1 = vram[addrVRAM.GetOffset(tileDataAddr + (fineY * 2))];
+            uint8_t byte2 = vram[addrVRAM.GetOffset(tileDataAddr + (fineY * 2) + 1)];
+
+            int bit = 7 - (winX % 8);
+            uint8_t lo = (byte1 >> bit) & 1;
+            uint8_t hi = (byte2 >> bit) & 1;
+            uint8_t colorId = (hi << 1) | lo;
+
+            uint8_t paletteShift = colorId * 2;
+            uint8_t shade = (bgp >> paletteShift) & 0x03;
+
+            screenBuffer[ly * 160 + x] = paletteColors[shade];
+        }
+    }
+
+    if (!bgEnabled)
+    {
+        //"When Bit 0 is cleared, both background and window become blank (white)"
+        for (int x = 0; x < 160; x++)
+        {
+            screenBuffer[ly * 160 + x] = paletteColors[0];
+        }
+    }
     RenderSprites();
 }
 
@@ -273,7 +364,8 @@ void PPU::RenderSprites()
 
             // Determine Palette
             // Bit 4 of attributes: 0 = OBP0 (FF48), 1 = OBP1 (FF49)
-            uint8_t paletteReg = (attributes & 0x10) ? bus->Read(0xFF49) : bus->Read(0xFF48);
+            //uint8_t paletteReg = (attributes & 0x10) ? bus->Read(0xFF49) : bus->Read(0xFF48);
+            uint8_t paletteReg = (attributes & 0x10) ? obp1 : obp0;
 
             // Apply Palette to get the Shade (0-3)
             uint8_t paletteShift = colorId * 2;
@@ -292,4 +384,41 @@ void PPU::RenderSprites()
             screenBuffer[ly * 160 + screenX] = paletteColors[shade];
         }
     }
+}
+
+void PPU::UpdateSTATInterrupt()
+{
+    bool currentSignal = false;
+
+    // LY=LYC Check
+    // We update stat bit 2(LY=LYC) inside PPU::Tick()
+    if ((stat & 0x04) && (stat & 0x40))
+    {
+        currentSignal = true;
+    }
+
+    // Mode Checks
+    switch (mode)
+    {
+    case PPUMode::HBLANK: // Mode 0
+        if (stat & 0x08) currentSignal = true;
+        break;
+    case PPUMode::VBLANK: // Mode 1
+        if (stat & 0x10) currentSignal = true;
+        break;
+    case PPUMode::OAM_SCAN: // Mode 2
+        if (stat & 0x20) currentSignal = true;
+        break;
+    case PPUMode::DRAWING: // Mode 3
+        // Mode 3 never triggers a STAT interrupt
+        break;
+    }
+
+    // Rising Edge Detector
+    if (currentSignal && !prevStatInterruptSignal)
+    {
+        bus->RequestInterrupt(InterruptCode::LCD);
+    }
+
+    prevStatInterruptSignal = currentSignal;
 }

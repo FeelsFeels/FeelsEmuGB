@@ -27,6 +27,7 @@ public:
 private:
 	friend class DebugInfo;
 	friend class VRAMBrowser;
+	friend class TileMapBrowser;
 
 	std::string pathToCartridge;
 	std::shared_ptr<Cartridge> cart;

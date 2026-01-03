@@ -1,5 +1,6 @@
 #include "utils/VFS/VFS.h"
 #include "utils/Filepaths.h"
+#include "GameBoySettings.h"
 #include "core/Gameboy.h"
 #include "editor/Editor.h"
 #include "graphics/Renderer.h"
@@ -15,8 +16,6 @@
 // Screen dimensions
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
-
-
 
 void HandleInput(GameBoy& gb)
 {
@@ -99,9 +98,14 @@ int main(int argc, char* argv[])
     // Keyboard input
     std::unordered_map<SDL_Scancode, ButtonState> keyboard;
 
+    SDL_GetTicks64(); // Initialize timer
+
     bool done = false;
     while (!done)
     {
+        uint64_t startTime = SDL_GetTicks64(); // Start of frame
+
+        // Poll Keyboard input
         for (auto& [key, state] : keyboard)
         {
             state.pressed = false;
@@ -143,10 +147,10 @@ int main(int argc, char* argv[])
         // Run CPU for 1 frame
         // Update Texture with PPU pixels
         gameboy->UpdateInput(keyboard);
-        const int CYCLES_PER_FRAME = 70224;
+
         int cyclesThisFrame = 0;
 
-        while (cyclesThisFrame < CYCLES_PER_FRAME)
+        while (cyclesThisFrame < GBSettings::CYCLES_PER_FRAME)
         {
             int cycles = gameboy->Update();
             if (cycles <= 0) break;
@@ -177,6 +181,18 @@ int main(int argc, char* argv[])
 
         // Swap buffers
         SDL_GL_SwapWindow(window);
+
+        // Limit Speed 
+        if (GBSettings::RUNTIME_SPEED > 0.0f)
+        {
+            uint64_t endTime = SDL_GetTicks64();
+            uint64_t frameTime = endTime - startTime;
+            float targetTime = GBSettings::TARGET_FRAME_TIME / GBSettings::RUNTIME_SPEED;
+            if (frameTime < targetTime)
+            {
+                SDL_Delay(static_cast<uint32_t>(targetTime - frameTime));
+            }
+        }
     }
 //#endif
 

@@ -1,5 +1,6 @@
 #include "Editor.h"
 #include "../utils/VFS/VFS.h"
+#include "../GameBoySettings.h"
 
 
 void VRAMBrowser::Init(Renderer* p)
@@ -124,6 +125,178 @@ void VRAMBrowser::Draw(GameBoy& gb, ImGuiIO& io)
 
 }
 
+
+void TileMapBrowser::Init(Renderer* p)
+{
+    renderer = p;
+    textureID = renderer->CreateTexture(WIDTH, HEIGHT);
+    pixelBuffer.resize(WIDTH * HEIGHT);
+}
+
+void TileMapBrowser::UpdateBuffer(GameBoy& gb)
+{
+    const auto& vram = gb.ppu.GetVRAM();
+
+    uint16_t mapBase = showTilemap2 ? 0x9C00 : 0x9800;
+
+    for (int y = 0; y < 32; y++)
+    {
+        for (int x = 0; x < 32; x++)
+        {
+            Address mapAddr = mapBase + (y * 32) + x;
+            uint8_t tileIndex = vram[addrVRAM.GetOffset(mapAddr)];
+
+            // Get the Tile Data Address
+            bool signedMode = !(gb.ppu.Read(0xFF40) & 0x10);
+            Address tileDataAddr;
+
+            // Controls which section of tile data is being read from
+            if (signedMode)
+                tileDataAddr = 0x9000 + (static_cast<int8_t>(tileIndex) * 16);
+            else
+                tileDataAddr = 0x8000 + (tileIndex * 16);
+
+            // Draw the 8x8 pixels of this tile into the buffer
+            // Calculate where this tile sits in the 256x256 buffer
+            int bufferStartX = x * 8;
+            int bufferStartY = y * 8;
+
+            // Loop 8 rows(pixels) of the tile
+            for (int row = 0; row < 8; row++)
+            {
+                uint8_t byte1 = vram[addrVRAM.GetOffset(tileDataAddr + (row * 2))];
+                uint8_t byte2 = vram[addrVRAM.GetOffset(tileDataAddr + (row * 2) + 1)];
+
+                for (int bit = 0; bit < 8; bit++)
+                {
+                    // Extract the bits
+                    uint8_t lo = (byte1 >> bit) & 0x01;
+                    uint8_t hi = (byte2 >> bit) & 0x01;
+
+                    // Combine: (Hi << 1) | Lo  -> Results in 0, 1, 2, or 3
+                    int colorIndex = (hi << 1) | lo;
+                    uint32_t color = palette[colorIndex];
+
+                    int finalX = bufferStartX + (7 - bit);
+                    int finalY = bufferStartY + row;
+
+                    pixelBuffer[finalY * 256 + finalX] = color;
+                }
+            }
+        }
+    }
+    // Upload to GPU
+    renderer->UpdateTexture(textureID, WIDTH, HEIGHT, pixelBuffer.data());
+}
+
+void TileMapBrowser::Draw(GameBoy& gb, ImGuiIO& io)
+{
+    if (!isVisible) return;
+
+    UpdateBuffer(gb);
+
+    if (ImGui::Begin("Tilemap Viewport", &isVisible))
+    {
+        ImGui::Checkbox("Draw Viewport Box", &drawViewportBox); 
+        ImGui::SameLine();
+        ImGui::Checkbox("Show Tilemap 2", &showTilemap2);
+
+        ImGui::Separator();
+
+        float scale = 2.0f;
+        ImVec2 imageSize(WIDTH * scale, HEIGHT * scale);
+
+        ImVec2 uv0(0, 0);
+        ImVec2 uv1(1, 1);
+
+        ImGui::Image((void*)(intptr_t)textureID, imageSize, uv0, uv1);
+
+        if (drawViewportBox)
+        {
+            // Viewport position
+            uint8_t scy = gb.ppu.Read(0xFF42);
+            uint8_t scx = gb.ppu.Read(0xFF43);
+
+            // Setup Dimensions
+            // We need the screen position of the image we just drew to calculate offsets
+            ImVec2 pMin = ImGui::GetItemRectMin();
+            int viewW = 160;
+            int viewH = 144;
+
+            // Calculate Segments (Handle Wrapping)
+            // A "Segment" defines a Start coordinate and a Length
+            struct Segment { int start; int length; };
+
+            // X Axis Logic
+            std::vector<Segment> xSegs;
+            if (scx + viewW <= 256)
+            {
+                // No X-wrap
+                xSegs.push_back({ (int)scx, viewW });
+            }
+            else
+            {
+                // X-wrap: Split into [Right Side] and [Left Side]
+                int rightSide = 256 - scx;
+                xSegs.push_back({ (int)scx, rightSide });       // e.g., 200 -> 255
+                xSegs.push_back({ 0, viewW - rightSide });      // e.g., 0 -> 103
+            }
+
+            // Y Axis Logic
+            std::vector<Segment> ySegs;
+            if (scy + viewH <= 256)
+            {
+                // No Y-wrap
+                ySegs.push_back({ (int)scy, viewH });
+            }
+            else
+            {
+                // Y-wrap: Split into [Bottom Side] and [Top Side]
+                int bottomSide = 256 - scy;
+                ySegs.push_back({ (int)scy, bottomSide });
+                ySegs.push_back({ 0, viewH - bottomSide });
+            }
+
+            // 4. Draw Rectangles
+            // If we wrap on both axes, this loop runs 4 times (drawing 4 corners).
+            ImDrawList* drawList = ImGui::GetWindowDrawList();
+
+            for (const auto& xs : xSegs)
+            {
+                for (const auto& ys : ySegs)
+                {
+                    // Convert Map Coordinates -> Screen Coordinates
+                    float x1 = pMin.x + (xs.start * scale);
+                    float y1 = pMin.y + (ys.start * scale);
+                    float x2 = x1 + (xs.length * scale);
+                    float y2 = y1 + (ys.length * scale);
+
+                    // Draw Yellow Box with 2.0f thickness
+                    drawList->AddRect(
+                        ImVec2(x1, y1),
+                        ImVec2(x2, y2),
+                        IM_COL32(255, 255, 0, 255),
+                        0.0f, 0, 2.0f
+                    );
+
+                    // Optional: Add a faint fill to make it easier to see
+                    drawList->AddRectFilled(
+                        ImVec2(x1, y1),
+                        ImVec2(x2, y2),
+                        IM_COL32(255, 255, 0, 50)
+                    );
+                }
+            }
+        }
+
+        // Draw Grid Overlay
+        ImDrawList* drawList = ImGui::GetWindowDrawList();
+    }
+    ImGui::End();
+
+}
+
+
 bool RomBrowser::Draw(std::string* outPath)
 {
     if (!isVisible) return false;
@@ -210,6 +383,7 @@ bool RomBrowser::Draw(std::string* outPath)
     return fileSelected;
 }
 
+
 void CartInfo::Draw(GameBoy& gb, ImGuiIO& io)
 {
     if (!isVisible) return;
@@ -229,10 +403,15 @@ void CartInfo::Draw(GameBoy& gb, ImGuiIO& io)
         ImGui::Text("Has Battery: %s", info.hasBattery ? "TRUE" : "FALSE");
         ImGui::Text("Has Timer: %s", info.hasTimer ? "TRUE" : "FALSE");
 
+        ImGui::Separator();
+
+        ImGui::Text("CGB Flag: %s", info.cgbFlag ? "TRUE" : "FALSE");
+
     }
     ImGui::End();
 
 }
+
 
 void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
 {
@@ -328,6 +507,61 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
 }
 
 
+void ControlPanel::Draw(GameBoy& gb, ImGuiIO& io)
+{
+    if (!isVisible) return;
+
+    if (ImGui::Begin("Control Panel", &isVisible))
+    {
+        ImGui::Text("Performance");
+        ImGui::Separator();
+
+        ImGui::Text("FPS: %.1f", io.Framerate);
+        ImGui::Text("Frame Time: %.2f ms", 1000.0f / io.Framerate);
+
+
+        ImGui::Spacing();
+        ImGui::Text("Emulation Speed");
+        ImGui::Separator();
+
+        float& speed = GBSettings::RUNTIME_SPEED;
+
+        // Slider range:
+        // -1.0  -> uncapped
+        // 0.5x  -> minimum capped
+        // 4.0x  -> maximum capped
+        const float minSpeed = -1.0f;
+        const float maxSpeed = 4.0f;
+        if (ImGui::SliderFloat("Runtime Speed", &speed, minSpeed, maxSpeed, "%.2f"))
+        {
+            // Round to to 0.5 steps
+            speed = std::round(speed * 4.0f) / 4.0f;
+
+            if (speed > maxSpeed) speed = maxSpeed;
+            if (speed < minSpeed) speed = minSpeed;
+        }
+
+        if (speed < 0.0f)
+        {
+            ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Speed: UNCAPPED");
+        }
+        else
+        {
+            ImGui::Text("Speed: %.2fx", speed);
+        }
+
+    }
+    ImGui::End();
+}
+
+
+void Editor::Init(Renderer* p)
+{
+    renderer = p; 
+    vramBrowser.Init(renderer);
+    tileMapBrowser.Init(renderer);
+}
+
 void Editor::Render(GameBoy& gb)
 {
     ImGuiIO& io = ImGui::GetIO();
@@ -354,7 +588,9 @@ void Editor::Render(GameBoy& gb)
 
     debugInfo.Draw(gb, io);
     cartInfo.Draw(gb, io);
+    controlPanel.Draw(gb, io);
     vramBrowser.Draw(gb, io);
+    tileMapBrowser.Draw(gb, io);
 }
 
 

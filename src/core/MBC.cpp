@@ -41,21 +41,97 @@ void NoMBC::Write(Address address, uint8_t val)
 
 MBC1::MBC1(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
 	: Cartridge(std::move(info), std::move(romData))
-{}
+{
+	romBankMask = this->info.romBanks - 1;
+}
+
 MBC1::~MBC1()
 {}
+
 uint8_t MBC1::Read(Address address)
 {
-	if (address < 0x4000) return rom[address];
-	if (address < 0x8000) return rom[address];
+	if (addrROMBank0.Contains(address))
+	{
+		if (bankingMode == 0)
+		{
+			return rom[address];
+		}
+		else
+		{
+			// Bank 0 address being remapped.
+			uint8_t targetBank = (bankHigh << 5);
+			targetBank &= romBankMask;
+			uint32_t offset = (targetBank * info.romBankSize) + address;
+
+			return (offset < rom.size()) ? rom[offset] : 0xFF;
+		}
+	}
+	else if (addrROMBankSwitchable.Contains(address))
+	{
+		uint8_t bankLowTranslation = bankLow;
+		bankLowTranslation += bankLowTranslation == 0 ? 1 : 0; // QUIRK: Bank 0 becomes Bank 1
+
+		// Offset = (Bank Number * Bank size) + (Address - start of addr region)
+		uint8_t targetBank = (bankHigh << 5) | bankLowTranslation;
+		targetBank &= romBankMask;
+		uint32_t offset = (targetBank * info.romBankSize) + (address - addrROMBankSwitchable.start);
+
+		return (offset < rom.size()) ? rom[offset] : 0xFF;
+	}
+	else if (addrExtRAM.Contains(address))
+	{
+		if (!ramEnabled) return 0xFF;
+
+		uint8_t targetRamBank = 0;
+		if (bankingMode == 1)
+		{
+			targetRamBank = bankHigh & 0x03;
+		}
+		else
+		{
+			targetRamBank = 0;
+		}
+
+		uint32_t offset = (targetRamBank * info.ramBankSize) + (address - addrExtRAM.start);
+		return (offset < ram.size()) ? ram[offset] : 0xFF;
+	}
+
 }
 
 void MBC1::Write(Address address, uint8_t val)
 {
-	if (address < 0x8000)
+	if (addrRAMEnable.Contains(address))
 	{
-
-		return;  // Silently ignore
+		ramEnabled = ((val & 0x0F) == 0x0A);
+	}
+	else if (addrBankSelector.Contains(address))
+	{
+		// Primary bank selector. only lower 5 bits matter.
+		bankLow = val & 0x1F;
+		//if (bankLow == 0) bankLow = 1; // QUIRK: Bank 0 becomes Bank 1
+	}
+	else if (addrBankSelector2.Contains(address))
+	{
+		// Secondary bank selector.
+		// Banking mode 0 - Regular rom banking mode.
+		// Banking mode 1 - Ram mode. Rom Bank 0 can now be switched. Ram Banks can be switched.
+		bankHigh = val & 0x03;
+	}
+	else if (addrBankingMode.Contains(address))
+	{
+		bankingMode = val & 0x01;
+	}
+	else if (addrExtRAM.Contains(address))
+	{
+		if (ramEnabled)
+		{
+			uint8_t targetRamBank = (bankingMode == 1) ? bankHigh : 0;
+			uint32_t offset = (targetRamBank * info.ramBankSize) + (address - addrExtRAM.start);
+			if (offset < ram.size())
+			{
+				ram[offset] = val;
+			}
+		}
 	}
 }
 

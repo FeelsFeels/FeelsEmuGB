@@ -57,6 +57,31 @@ FFFF	FFFF	Interrupt Enable register (IE)
 On the Memory Bank Controller (MBC):
 https://retrocomputing.stackexchange.com/questions/11732/how-does-the-gameboys-memory-bank-switching-work
 
+The general concept is you write to ranges to switch which memory bank you are reading from. 
+Since the gameboy can only read from a 16-bit address space, this allows you to read from more memory than the address space allows.
+
+On MBC1:
+0x0000-0x3FFF - Read only, cannot switch nor modify.
+0x4000-0x7FFF - Read only. Contains whatever memory bank is currently being selected.
+0xA000-0xBFFF - Read/Write. This is where the RAM bank lives, if present. Can have multiple banks as well.
+
+Writes to control:
+0x0000-0x1FFF - Writing to this range enables/disables RAM. Write the value 0x0A to anywhere in this range to enable. Any other value disables it.
+0x2000-0x3FFF - Writing to this range switches the ROM Bank. Only the bottom 5 bits are taken into account.
+                Writing 0xE1 (111 00001) will select rom bank 01. IMPORTANT CONCEPT: If set to 0, it behaves as if it was set to bank 01.
+                If the number of rom banks need only, say, 4 bits to represent, the 5th bit is masked, which ignores it for bank selection.
+                  Even so, 0b10000 is considered different from 0b00000, so you can map bank 0 on smaller Cartridges this way.
+                
+0x4000-0x5FFF - Larger carts needing >5bits bank numbers, there is a second banking register located here, which supplies 2 additional bits for the bank number.
+                Final computation: Selected ROM Bank = (Secondary Bank << 5) + Primary ROM Bank
+                Weird behaviour: these two extra bits are not taken into account for the bank 00 -> 01 translation as described above.
+                Thus, accessing bank 0x20, 0x40, and 0x60 selects bank 0x21, 0x41, and 0x61 instead.
+                This 2 bit register can also be used to select the RAM Bank, depending on the ROM/RAM selection mode(below).
+
+0x6000-0x7FFF - 1 bit register representing Banking Mode select. Controls the behaviour of the Secondary 2 bit bank selection register.
+                0: Simple(default). 0x0000-0x3FFF for ROM and 0xA000-0xBFFF for RAM is locked to bank 0 of ROM and SRAM.
+                1: Advanced. 0x0000-0x3FFF and 0xA000-0xBFFF can now be switched via the second banking register.
+
 ============================================
 
 On "Registers":
@@ -145,8 +170,12 @@ For gameboy input, if bit == 0, button is down. Same goes for the "Selector"
 ============================================
 
 On Graphics:
+VRAM Structure:
+Tile Data - stored in 0x8000-0x97FF, in two "blocks" or "addressing modes".
+  0x8000-0x8FFF / 0x8800-0x97FF
+Tile Maps - stored in 0x9800-0x9FFF. Two blocks of 32x32 grids(0x9800-0x9BFF and 0x9C00-0x9FFF). This is "Which tiles to display where"
+
 https://www.huderlem.com/demos/gameboy2bpp.html
-Tile data is stored in VRAM, 0x8000-0x97FF
 Each tile is 16 bytes. Thus 384 tiles. Stored in three "blocks" of 128 tiles each
 Each tile is 8x8 pixels.
 Each line is represented by 2 bytes. (8 lines)
@@ -176,18 +205,23 @@ uint8_t wx;   // 0xFF4B Window position X
 
 
 Background:
-A 256x256 tilemap. Tiles only contain references to the tiles in VRAM.
-But each tile in the tilemap can only store values of 0-255, while VRAM can store 384 tiles.
+The Gameboy screen is only 160x144. but the background is a 256x256 map (32 tiles * 8 pixels = 256). 
+Tiles only contain references to the tiles in VRAM.
+But each tile in the map can only store values of 0-255, while VRAM can store 384 tiles.
 There is an additional setting in lcdc, ""BG & Window tiles", bit 4, which controls which "half" you are referencing.
 0 being 0x8800-0x97FF, and 1 being 0x8000-0x8FFF in vram. Note the overlap! 0x8800-0x8FFF is overlapped! A 128 tile overlap.
 
-Background can also be scrolled via scy and scx registers. These two register specify the top-left coordinates of the 160 x 144 window.
+Background can also be scrolled via scy and scx registers. These two registers specify which part of the 256x256 background is visible.
 If values are larger than 255, like in the case of when scx = 40, (40 + 159) = 199, they loop around the screen.
 
+The tilemap the background uses is specified at bit 3 of LCDC. 0 uses the tilemap at 0x9800, otherwise the 0x9C00 one.
+Window has the same tilemap choosing behaviour, at bit 6 of LCDC.
+The bytes in the tilemap is just an index pointing to the tile data.
 
 Window:
-wy and wx specify the Window's top-left pixel.
+wy and wx specify the Window's top-left pixel, but wx is + 7. namely wx=7, wy=0 is top left.
 Windows are frequently used for immovable ui, like healthbar at the bottom of kirby.
+
 
 OAM (object attribute map/memory) - think of these as objects / sprites
 Controlled through 0xFF40 bit 1 and 2. Bit 1 enables/disables. Bit 2 controls size: 0 = 8x8, 1 = 8 x 16.
@@ -211,6 +245,14 @@ Priority - if 1, BG and Window color indices 1-3 are drawn over this sprite.
 
 
 On Palettes:
+Remember the fact that the gameboy has 4 colors (color indexes) - 00, 01, 10, 11, with the colors being White, Light gray, Dark grey, and Black respectively
+Each pixel has a ColorID as well - 0, 1, 2, 3.
+The palettes remap the ColorID to these 4 color indexes.
+There are two types of palletes - Background palette data, and OBJ palette data. What both of them do is self explanatory. It's just bg vs obj.
+But note that the color index 0 is ignored for OBJ since 0 is transparent for OBJs. There are also two OBJ palettes. One at 0xFF48 and one at 0xFF49.
+Each object chooses which palette to use from it's OAM entry (see above, "DMG Palette").
+
+
 
 
 Timing for graphics:
@@ -237,3 +279,16 @@ IF register 0xFF0F - The state of the interrupts. "Do I need to handle any inter
 IE register 0xFFFF - Interrupt table. Enables/Disables whether each interrupt can be called.
 IME flag, internal to cpu - Enables/Disables all interrupts globally.
 
+
+0xFF41: STAT register for graphics is a weird one.
+Bit 7: Unused.
+Bit 6: LYC=LY Interrupt Enable (1=enabled)
+Bit 5: Mode 2 (OAM Search) Interrupt Enable (1=enabled)
+Bit 4: Mode 1 (VBlank) Interrupt Enable (1=enabled)
+Bit 3: Mode 0 (HBlank) Interrupt Enable (1=enabled)
+Bit 2: LYC=LY Flag (1=LY matches LYC, read-only)
+Bit 1-0: PPU Mode (read-only)
+  00 = Mode 0 (HBlank)
+  01 = Mode 1 (VBlank)
+  10 = Mode 2 (OAM Search)
+  11 = Mode 3 (Drawing)

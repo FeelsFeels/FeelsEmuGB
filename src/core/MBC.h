@@ -21,9 +21,11 @@ public:
 	void Write(Address address, uint8_t val) override;
 
 private:
-	bool romEnabled = false;
-
-
+	uint8_t bankLow = 1;       // Primary Rom Bank Selector - only bottom 5 bits matter
+	uint8_t bankHigh = 0;      // Secondary Rom Bank Selector / Ram Selector - bottom 2 bits matter
+	bool ramEnabled = false;  // Is RAM writable?
+	uint8_t bankingMode = 0;  // 0 = ROM Mode, 1 = RAM Mode
+	uint32_t romBankMask = 0; // See notes: if # banks needs less than 5 bits to represent, 5th bit is masked.
 };
 
 class MBC2 : public Cartridge

@@ -3,7 +3,9 @@
 
 Cartridge::Cartridge(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
 	: info {std::move(info)}, rom {std::move(romData)}
-{}
+{
+	ram.resize(this->info.ramSizeBytes);
+}
 
 Cartridge::~Cartridge()
 {}
@@ -107,13 +109,18 @@ CartridgeInfo Cartridge::ParseCartridgeHeader(const std::vector<uint8_t>& romDat
 	cartInfo.romSizeType = static_cast<RomSize>(romData[CartridgeHeaderAddresses::ROM_SIZE.start]);
 	cartInfo.romSizeBytes = GetRomSizeBytes(cartInfo.romSizeType);
 	cartInfo.romBanks = GetRomBanks(cartInfo.romSizeType);
+	if(cartInfo.romBanks > 0) cartInfo.romBankSize = cartInfo.romSizeBytes / cartInfo.romBanks;
 	cartInfo.ramSizeType = static_cast<RamSize>(romData[CartridgeHeaderAddresses::RAM_SIZE.start]);
 	cartInfo.ramSizeBytes = GetRamSizeBytes(cartInfo.ramSizeType);
 	cartInfo.ramBanks = GetRamBanks(cartInfo.ramSizeType);
+	if(cartInfo.ramBanks > 0) cartInfo.ramBankSize = cartInfo.ramSizeBytes / cartInfo.ramBanks;
 
 	cartInfo.hasRam = CartridgeHasRam(cartInfo.type);
 	cartInfo.hasBattery = CartridgeHasBattery(cartInfo.type);
 	cartInfo.hasTimer = CartridgeHasTimer(cartInfo.type);
+
+	uint8_t cgb = romData[CartridgeHeaderAddresses::CGB_FLAG.start];
+	cartInfo.cgbFlag = (cgb == 0x80 || cgb == 0xC0) ? true : false;
 
 	return cartInfo;
 }

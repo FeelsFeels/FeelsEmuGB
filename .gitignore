@@ -54,3 +54,6 @@ GameInstaller/GAMEDIRECTORY
 
 # Build files
 build*/
+
+# So Nintendo doesn't annihilate me
+roms/games

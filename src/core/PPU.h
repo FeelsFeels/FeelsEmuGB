@@ -33,6 +33,7 @@ public:
 private:
 	void RenderScanlineToBuffer();
 	void RenderSprites();
+	void UpdateSTATInterrupt();
 
 	Bus* bus;
 
@@ -48,9 +49,13 @@ private:
 	uint8_t ly;    // 0xFF44 LCD Y coordinate
 	uint8_t lyc;   // 0xFF45 LY compare
 	uint8_t bgp;   // 0xFF47 BD palette data
-
+	uint8_t obp0;  // 0xFF48 Object Palettes
+	uint8_t obp1;  // 0xFF49 Object Palettes
+	uint8_t wy;    // 0xFF4A Window Y Pos
+	uint8_t wx;    // 0xFF4B Window X Pos
 
 	PPUMode mode;
+	bool prevStatInterruptSignal = false;
 
 	int dots{ 0 };
 };

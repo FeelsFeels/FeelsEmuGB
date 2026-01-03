@@ -279,11 +279,13 @@ struct CartridgeInfo
     RomSize romSizeType;          // 0x0148 (The Enum)
     uint32_t romSizeBytes;        // Calculated
     uint16_t romBanks;            // Calculated
+    uint16_t romBankSize = 0;     // Calculated
 
     // RAM Logic
     RamSize ramSizeType;          // 0x0149 (The Enum)
     uint32_t ramSizeBytes;        // Calculated
     uint8_t ramBanks;             // Calculated
+    uint8_t ramBankSize = 0;      // Calculated
 
     // Feature Flags
     bool hasRam;
