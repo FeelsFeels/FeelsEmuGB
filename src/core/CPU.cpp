@@ -86,6 +86,45 @@ void CPU::RequestInterrupt(InterruptCode bit)
     interruptFlag |= (1 << static_cast<int>(bit));
 }
 
+void CPU::SaveState(std::ofstream& out)
+{
+    // Registers
+    GBWrite(out, reg.a); GBWrite(out, reg.f);
+    GBWrite(out, reg.b); GBWrite(out, reg.c);
+    GBWrite(out, reg.d); GBWrite(out, reg.e);
+    GBWrite(out, reg.h); GBWrite(out, reg.l);
+    GBWrite(out, reg.sp);
+    GBWrite(out, reg.pc);
+
+    // Interrupts
+    GBWrite(out, ime);
+    GBWrite(out, imeNext);
+    GBWrite(out, halted);
+    GBWrite(out, stopped);
+
+    GBWrite(out, interruptFlag);
+    GBWrite(out, interruptFlagEnabled);
+}
+
+void CPU::LoadState(std::ifstream& in)
+{
+    GBRead(in, reg.a); GBRead(in, reg.f);
+    GBRead(in, reg.b); GBRead(in, reg.c);
+    GBRead(in, reg.d); GBRead(in, reg.e);
+    GBRead(in, reg.h); GBRead(in, reg.l);
+    GBRead(in, reg.sp);
+    GBRead(in, reg.pc);
+
+    GBRead(in, ime);
+    GBRead(in, imeNext);
+    GBRead(in, halted);
+    GBRead(in, stopped);
+
+    GBRead(in, interruptFlag);
+    GBRead(in, interruptFlagEnabled);
+}
+
+
 int CPU::HandleInterrupts()
 {
     uint8_t interrupts = interruptFlag & interruptFlagEnabled;

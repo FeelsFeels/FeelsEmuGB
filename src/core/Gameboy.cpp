@@ -36,7 +36,7 @@ void GameBoy::InsertCartridge(std::string filepath)
 	
 	//std::cout << "Loaded Rom: " << filepath << "\n";
 	pathToCartridge = filepath;
-	cart = Cartridge::CreateCartridge(std::move(romData));
+	cart = Cartridge::CreateCartridge(std::move(romData), filepath);
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();
 	cpu.ResetRegisters();
@@ -45,7 +45,7 @@ void GameBoy::InsertCartridge(std::string filepath)
 
 const CartridgeInfo& GameBoy::GetCartInfo() const
 {
-	return cart->info;
+	return cart->GetInfo();
 }
 
 int GameBoy::Update()
@@ -61,6 +61,7 @@ int GameBoy::Update()
 
 	return cycles;
 }
+
 
 void GameBoy::UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboard)
 {
@@ -106,4 +107,59 @@ void GameBoy::UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboar
 	else
 		joypad.ButtonUp(Buttons::START);
 
+}
+
+
+void GameBoy::SaveState()
+{
+	std::string filepath = VFS::ConvertVirtualToPhysical(cart->GetInfo().filepath);
+	std::string saveStateFilepath = VFS::GetStem(filepath) + ".state";
+	saveStateFilepath = VFS::JoinPath(VFS::GetParentPath(filepath), saveStateFilepath);
+
+	std::ofstream out(saveStateFilepath, std::ios::binary);
+
+	SaveStateHeader header;
+	header.romChecksum = cart->GetInfo().headerChecksum;
+
+	// Write components
+	GBWrite(out, header);
+	cpu.SaveState(out);
+	bus.SaveState(out);
+	ppu.SaveState(out);
+	cart->SaveState(out);
+	timer.SaveState(out);
+}
+
+void GameBoy::LoadState()
+{
+	std::string filepath = VFS::ConvertVirtualToPhysical(cart->GetInfo().filepath);
+	std::string saveStateFilepath = VFS::GetStem(filepath) + ".state";
+	saveStateFilepath = VFS::JoinPath(VFS::GetParentPath(filepath), saveStateFilepath);
+
+	std::ifstream in(saveStateFilepath, std::ios::binary);
+	if (!in)
+	{
+		std::cout << "No Savestates found!\n";
+		return;
+	}
+
+	SaveStateHeader header;
+	GBRead(in, header);
+
+	if (header.magic != SAVESTATE_MAGIC)
+	{
+		printf("Error: Not a valid save state.\n");
+		return;
+	}
+	if (header.version != SAVESTATE_VERSION)
+	{
+		printf("Error: Save state version mismatch.\n");
+		return;
+	}
+
+	cpu.LoadState(in);
+	bus.LoadState(in);
+	ppu.LoadState(in);
+	cart->LoadState(in);
+	timer.LoadState(in);
 }

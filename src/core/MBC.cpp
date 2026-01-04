@@ -130,9 +130,33 @@ void MBC1::Write(Address address, uint8_t val)
 			if (offset < ram.size())
 			{
 				ram[offset] = val;
+
+				if (info.hasBattery) ramDirty = true;
 			}
 		}
 	}
+}
+
+void MBC1::SaveState(std::ofstream& out)
+{
+	Cartridge::SaveState(out);
+
+	GBWrite(out, bankLow);
+	GBWrite(out, bankHigh);
+	GBWrite(out, bankingMode);
+	GBWrite(out, ramEnabled);
+	GBWrite(out, romBankMask);
+}
+
+void MBC1::LoadState(std::ifstream & in)
+{
+	Cartridge::LoadState(in);
+
+	GBRead(in, bankLow);
+	GBRead(in, bankHigh);
+	GBRead(in, bankingMode);
+	GBRead(in, ramEnabled);
+	GBRead(in, romBankMask);
 }
 
 

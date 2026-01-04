@@ -68,11 +68,11 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrWRAM.Contains(addr))
 	{
-		if (cgbMode && AddressRange::InRange(0xD000, 0xDFFF, addr))
-		{
-			// Switchable bank 1-7
-			ASSERT(false, "CGB unsupported");
-		}
+		//if (cgbMode && AddressRange::InRange(0xD000, 0xDFFF, addr))
+		//{
+		//	// Switchable bank 1-7
+		//	ASSERT(false, "CGB unsupported");
+		//}
 
 		return wram[addrWRAM.GetOffset(addr)];
 	}
@@ -155,7 +155,7 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrUnused.Contains(addr))
 	{
-		// Do no thing
+		// Do no thing, or crash, haha
 	}
 	else if (addrIO.Contains(addr))
 	{
@@ -222,3 +222,16 @@ void Bus::RequestInterrupt(InterruptCode bit)
 	cpu->RequestInterrupt(bit);
 }
 
+void Bus::SaveState(std::ofstream& out)
+{
+	GBWrite(out, wram);
+	GBWrite(out, hram);
+	GBWrite(out, io);
+}
+
+void Bus::LoadState(std::ifstream& in)
+{
+	GBRead(in, wram);
+	GBRead(in, hram);
+	GBRead(in, io);
+}

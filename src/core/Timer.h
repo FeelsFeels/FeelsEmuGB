@@ -14,6 +14,8 @@ public:
 
 	void AttachBus(Bus* p) { bus = p; }
 
+	void SaveState(std::ofstream& out);
+	void LoadState(std::ifstream& in);
 private:
 	Bus* bus;
 

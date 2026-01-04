@@ -75,6 +75,10 @@ struct ControlPanel
 {
 	bool isVisible = true;
 	void Draw(GameBoy& gb, ImGuiIO& io);
+private:
+	void SaveState(GameBoy& gb, ImGuiIO& io);
+	void LoadState(GameBoy& gb, ImGuiIO& io);
+
 };
 
 class Editor

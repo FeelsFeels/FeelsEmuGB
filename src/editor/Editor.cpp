@@ -550,8 +550,30 @@ void ControlPanel::Draw(GameBoy& gb, ImGuiIO& io)
             ImGui::Text("Speed: %.2fx", speed);
         }
 
+        // Save states
+        ImGui::Separator();
+
+        if (ImGui::Button("Save State"))
+        {
+            SaveState(gb, io);
+        }
+        if (ImGui::Button("Load State"))
+        {
+            LoadState(gb, io);
+        }
+
     }
     ImGui::End();
+}
+
+void ControlPanel::SaveState(GameBoy& gb, ImGuiIO& io)
+{
+    gb.SaveState();
+}
+
+void ControlPanel::LoadState(GameBoy & gb, ImGuiIO & io)
+{
+    gb.LoadState();
 }
 
 

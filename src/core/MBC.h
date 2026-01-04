@@ -20,6 +20,9 @@ public:
 	uint8_t Read(Address address) override;
 	void Write(Address address, uint8_t val) override;
 
+	void SaveState(std::ofstream& out) override;
+	void LoadState(std::ifstream& in) override;
+
 private:
 	uint8_t bankLow = 1;       // Primary Rom Bank Selector - only bottom 5 bits matter
 	uint8_t bankHigh = 0;      // Secondary Rom Bank Selector / Ram Selector - bottom 2 bits matter

@@ -422,3 +422,43 @@ void PPU::UpdateSTATInterrupt()
 
     prevStatInterruptSignal = currentSignal;
 }
+
+void PPU::SaveState(std::ofstream& out)
+{
+    // Memory
+    GBWriteArr(out, vram);
+    GBWriteArr(out, oam);
+
+    // Registers
+    GBWrite(out, lcdc);
+    GBWrite(out, stat);
+    GBWrite(out, scy); GBWrite(out, scx);
+    GBWrite(out, ly);  GBWrite(out, lyc);
+    GBWrite(out, bgp); GBWrite(out, obp0); GBWrite(out, obp1);
+    GBWrite(out, wy);  GBWrite(out, wx);
+
+    // Internal State
+    GBWrite(out, mode);
+    GBWrite(out, prevStatInterruptSignal);
+    GBWrite(out, dots);
+}
+
+void PPU::LoadState(std::ifstream& in)
+{
+    // Memory
+    GBReadArr(in, vram);
+    GBReadArr(in, oam);
+
+    // Registers
+    GBRead(in, lcdc);
+    GBRead(in, stat);
+    GBRead(in, scy); GBRead(in, scx);
+    GBRead(in, ly);  GBRead(in, lyc);
+    GBRead(in, bgp); GBRead(in, obp0); GBRead(in, obp1);
+    GBRead(in, wy);  GBRead(in, wx);
+
+    // Internal State
+    GBRead(in, mode);
+    GBRead(in, prevStatInterruptSignal);
+    GBRead(in, dots);
+}

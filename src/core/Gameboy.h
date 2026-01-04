@@ -22,6 +22,9 @@ public:
 	int Update();
 	const std::array <uint32_t, 25700>& GetScreenBuffer() { return ppu.GetScreenBuffer(); }
 
+	void SaveState();
+	void LoadState();
+
 	void UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboard);
 
 private:

@@ -5,19 +5,37 @@ Cartridge::Cartridge(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
 	: info {std::move(info)}, rom {std::move(romData)}
 {
 	ram.resize(this->info.ramSizeBytes);
+	if (this->info.hasBattery)
+	{
+		// Find .sav file where the info->filepath is located
+		std::string saveFilepath = VFS::GetStem(this->info.filepath) + ".sav";
+		saveFilepath = VFS::JoinPath(VFS::GetParentPath(this->info.filepath), saveFilepath);
+		if(VFS::FileExists(saveFilepath))
+		{
+			std::cout << "Save file found: " << saveFilepath << "\n";
+			VFS::ReadFile(saveFilepath, ram);
+		}
+		this->info.saveFilepath = saveFilepath;
+	}
 }
 
 Cartridge::~Cartridge()
-{}
+{
+	if (info.hasBattery && ramDirty)
+	{
+		DumpRAMToFile();
+	}
+}
 
 void Cartridge::LoadRAM(std::vector<uint8_t> ramData)
 {
 	ram = ramData;
 }
 
-std::unique_ptr<Cartridge> Cartridge::CreateCartridge(std::vector<uint8_t>&& romData)
+std::unique_ptr<Cartridge> Cartridge::CreateCartridge(std::vector<uint8_t>&& romData, std::string filepath)
 {
 	CartridgeInfo cartInfo = ParseCartridgeHeader(romData);
+	cartInfo.filepath = filepath;
 	
 	switch (cartInfo.type)
 	{
@@ -62,8 +80,6 @@ std::unique_ptr<Cartridge> Cartridge::CreateCartridge(std::vector<uint8_t>&& rom
 
 CartridgeInfo Cartridge::ParseCartridgeHeader(const std::vector<uint8_t>& romData)
 {
-	//std::cout << "Parsing... Raw ROM size: " << romData.size() << "\n";
-
 	CartridgeInfo cartInfo;
 
 	// Entry point 0100-0103
@@ -122,7 +138,43 @@ CartridgeInfo Cartridge::ParseCartridgeHeader(const std::vector<uint8_t>& romDat
 	uint8_t cgb = romData[CartridgeHeaderAddresses::CGB_FLAG.start];
 	cartInfo.cgbFlag = (cgb == 0x80 || cgb == 0xC0) ? true : false;
 
+
+	// Compute and verify checksum
+	cartInfo.headerChecksum = romData[CartridgeHeaderAddresses::HEADER_CHECKSUM.start];
+	uint8_t checksum = 0;
+	for (uint16_t address = 0x0134; address <= 0x014C; address++)
+	{
+		checksum = checksum - romData[address] - 1;
+	}
+
+	if (checksum != cartInfo.headerChecksum)
+	{
+		std::cout << "[WARNING] Cartridge Header Checksum does not match!\n";
+		cartInfo.headerChecksumValid = false;
+	}
+	else
+	{
+		cartInfo.headerChecksumValid = true;
+	}
 	return cartInfo;
+}
+
+
+void Cartridge::SaveState(std::ofstream& out)
+{
+	GBWriteVec(out, ram);
+	GBWrite(out, ramDirty);
+}
+
+void Cartridge::LoadState(std::ifstream& in)
+{
+	GBReadVec(in, ram);
+	GBRead(in, ramDirty);
+}
+
+void Cartridge::DumpRAMToFile()
+{
+	VFS::WriteFile(info.saveFilepath, ram);
 }
 
 

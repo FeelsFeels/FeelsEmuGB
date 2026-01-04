@@ -25,6 +25,10 @@ void HandleInput(GameBoy& gb)
 
 int main(int argc, char* argv[])
 {
+#ifdef _DEBUG
+    _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
+#endif
+
     VFS::MountDirectory("", Filepaths::roms);
 
 #ifdef GAMEBOY_DOCTOR
@@ -149,7 +153,6 @@ int main(int argc, char* argv[])
         gameboy->UpdateInput(keyboard);
 
         int cyclesThisFrame = 0;
-
         while (cyclesThisFrame < GBSettings::CYCLES_PER_FRAME)
         {
             int cycles = gameboy->Update();
@@ -168,9 +171,10 @@ int main(int argc, char* argv[])
             ImGui::Image((void*)(intptr_t)gameTexture, ImVec2(region.x, targetH));
         }
         ImGui::End();
-
-
         ImGui::Render();
+
+
+
         // Rendering
         glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
         glClearColor(0.45f, 0.55f, 0.60f, 1.00f); // Clear background

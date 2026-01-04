@@ -272,6 +272,9 @@ constexpr const char* GetRamSizeString(RamSize size)
 struct CartridgeInfo
 {
     std::string title;            // 0x0134 - 0x0143
+    std::string filepath;
+    std::string saveFilepath;     // Populate in cartridge constructor if battery detected
+
     CartridgeType type;           // 0x0147
     std::string cartTypeString;
 
@@ -294,6 +297,8 @@ struct CartridgeInfo
     //bool hasRumble;
     bool cgbFlag = false;
 
+    uint8_t headerChecksum;       // 0x014D
+    bool headerChecksumValid;     // Calculated. If false, real GB locks up.
 
     // Nice to have. Might support next time.
     /*
@@ -302,8 +307,6 @@ struct CartridgeInfo
     Destination destination;      // 0x014A (Japan vs Overseas)
     uint8_t version;              // 0x014C (Mask ROM version)
 
-    uint8_t headerChecksum;       // 0x014D
-    bool headerChecksumValid;     // Calculated. If false, real GB locks up.
 
     std::string licensee;         // 0x0144/0x014B
     */

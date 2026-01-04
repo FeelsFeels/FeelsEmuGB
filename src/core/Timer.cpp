@@ -62,3 +62,22 @@ void Timer::Write(Address addr, uint8_t val)
 		break;
 	}
 }
+
+
+void Timer::SaveState(std::ofstream& out)
+{
+	GBWrite(out, div);
+	GBWrite(out, tima);
+	GBWrite(out, tma);
+	GBWrite(out, tac);
+	GBWrite(out, previousTargetBitState);
+}
+
+void Timer::LoadState(std::ifstream& in)
+{
+	GBRead(in, div);
+	GBRead(in, tima);
+	GBRead(in, tma);
+	GBRead(in, tac);
+	GBRead(in, previousTargetBitState);
+}

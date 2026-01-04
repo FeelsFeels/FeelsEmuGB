@@ -20,6 +20,7 @@
 
 #include "utils/VFS/VFS.h"
 #include "utils/Debug.h"
+#include "utils/Savestates.h"
 
 #include "core/Address.h"
 #include "core/Interrupts.h"

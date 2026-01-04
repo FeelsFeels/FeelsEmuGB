@@ -38,6 +38,9 @@ public:
 
 	void RunBootRom();
 
+	void SaveState(std::ofstream& out);
+	void LoadState(std::ifstream& in);
+
 private:
 	Cartridge* cartridge;
 	CPU* cpu;
@@ -45,8 +48,7 @@ private:
 	Timer* timer;
 	Joypad* joypad;
 
-	bool cgbMode = false;
-	bool bootRomEnabled = false;
+	bool bootRomEnabled = false;	// TODO: does nothing right now. I never set it true anywhere, nor do any real checks with it.
 
 	std::array<uint8_t, 8192> wram;
 	std::array<uint8_t, 127> hram;

@@ -30,6 +30,11 @@ public:
 	const auto& GetVRAM() { return vram; }
 
 	const std::array <uint32_t, 25700>& GetScreenBuffer() { return screenBuffer; }
+
+
+	void SaveState(std::ofstream& out);
+	void LoadState(std::ifstream& in);
+
 private:
 	void RenderScanlineToBuffer();
 	void RenderSprites();
@@ -41,6 +46,7 @@ private:
 	std::array<uint8_t, 160> oam;
 	std::array <uint32_t, 25700> screenBuffer;	// We prepare the texture buffer to send to gpu here
 						//160 x 144 = 25700
+
 	// PPU registers (0xFF40-0xFF4B)
 	uint8_t lcdc;  // 0xFF40 LCD control
 	uint8_t stat;  // 0xFF41 LCD status

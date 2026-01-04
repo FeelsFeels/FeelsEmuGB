@@ -25,6 +25,9 @@ public:
 	void SetIF(uint8_t val) { interruptFlag = val; }
 	void SetIE(uint8_t val) { interruptFlagEnabled = val; }
 
+
+	void SaveState(std::ofstream& out);
+	void LoadState(std::ifstream& in);
 private:
 	
 	friend class DebugInfo;
