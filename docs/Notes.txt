@@ -25,7 +25,8 @@ I want to implement the scrolling visualizer just like the Ultimate Game Boy Tal
 I want a sound visualizer as well.
 
 
-
+Possible Liabilities:
+Currently, saving the game's ram only happens in the destructor of the cartridge class. Therefore, if the emulator crashes, the save file is not updated.
 
 Components:
 Game Boy

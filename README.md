@@ -8,7 +8,7 @@ Goal: Help others (and myself!) better understand the architecture of the Game B
 🚧 Work in Progress 🚧  
 To do list - GB  
 ROM Banking / MBCs: MBC1✅, the rest not yet  
-RAM Saving  
+RAM Saving ✅  
 Audio  
 Pass the other tests  
 Joypad hardware interrupts
@@ -17,7 +17,7 @@ Joypad hardware interrupts
 
 To do list - Editor features  
 Tilemap visualizer ✅  
-Save states  
+Save states ✅  
 Palette editor / visualizer  
 Input remappping  
 Practice writing shaders for things like a scanline effect  

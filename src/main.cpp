@@ -161,6 +161,16 @@ int main(int argc, char* argv[])
         }
         renderer.UpdateTexture(gameTexture, 160, 144, gameboy->GetScreenBuffer().data());
 
+
+        if (keyboard[SDL_SCANCODE_LSHIFT].down && keyboard[SDL_SCANCODE_O].pressed)
+        {
+            gameboy->SaveState();
+        }
+        if (keyboard[SDL_SCANCODE_LSHIFT].down && keyboard[SDL_SCANCODE_P].pressed)
+        {
+            gameboy->LoadState();
+        }
+
         // Show game in ImGui Window
         static float aspectRatio = 160.f / 144.f;
         ImGui::Begin("Game Viewport");
