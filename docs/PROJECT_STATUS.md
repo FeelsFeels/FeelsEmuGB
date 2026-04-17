@@ -1,14 +1,14 @@
 # Game Boy Emulator - Project Status
 
 **Date:** January 2026
-**Status:** Playable / Alpha
+**Status:** Playable
 **Current Focus:** Stability & Game Compatibility
 
-## 🏆 Current Achievements
+## Current Achievements
 The emulator is currently capable of running major commercial titles including *Pokémon Red/Blue*, *Tetris*, *DuckTales*, and *Super Mario Land 2*.
 
 ### Core Systems
-- [x] **CPU:** Full LR35902 instruction set with accurate cycle timing (M-Cycles).
+- [x] **CPU:** Full LR35902 instruction set.
 - [x] **PPU:** Scanline-based rendering, Background map, Window layer, Sprites (8x8 & 8x16).
 - [x] **Interrupts:** VBlank, STAT (LY=LYC, Mode 0-2), Timer (DIV/TIMA), Joypad.
 - [x] **Timer:** Cycle-accurate DIV and TIMA implementation.
@@ -44,6 +44,11 @@ The emulator is currently capable of running major commercial titles including *
 ### 3. Accuracy Improvements
 - **OAM DMA:** Currently instantaneous. Should block CPU for ~160 microseconds.
 - **Pixel FIFO:** PPU currently renders scanlines instantly. A Pixel FIFO implementation is required for precise mid-scanline effects (like the wobbling in *Prehistorik Man*).
+- **List of failed Blargg tests:** cgb_sound, dg_sound, interrupt_time, mem_timing, oam_bug, halt_bug.
+
+### 4. Editor Improvements
+- **Window viewport box visualizer:** Maybe in red.
+- **Pause button:** Especially so we can inspect the state of the gameboy.
 
 ---
 

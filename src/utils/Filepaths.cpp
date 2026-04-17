@@ -1,9 +1,11 @@
 #include "Filepaths.h"
 
+// Note: when wanting to actually build and "ship" the thing, set the workingDir to .
+
 #ifdef _DEBUG
 const std::string Filepaths::workingDir = "..";
 #else
-const std::string Filepaths::workingDir = ".";
+const std::string Filepaths::workingDir = "..";
 #endif
 
 
