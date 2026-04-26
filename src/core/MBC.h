@@ -49,6 +49,18 @@ public:
 
 	uint8_t Read(Address address) override;
 	void Write(Address address, uint8_t val) override;
+
+	void SaveState(std::ofstream& out) override;
+	void LoadState(std::ifstream& in) override;
+
+private:
+
+	uint8_t selectedRomBank = 1;
+	uint8_t selectedRamBank = 0; // includes RTC registers
+
+	bool ramEnabled = false;	// includes RTC registers
+
+	std::array<uint8_t, 5> rtcRegisters;
 };
 
 class MBC5 : public Cartridge
