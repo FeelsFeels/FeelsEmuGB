@@ -161,24 +161,6 @@ void MBC1::LoadState(std::ifstream & in)
 
 
 
-MBC2::MBC2(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
-	: Cartridge(std::move(info), std::move(romData))
-{}
-
-MBC2::~MBC2()
-{}
-
-uint8_t MBC2::Read(Address address)
-{
-	return rom[address];
-}
-
-void MBC2::Write(Address address, uint8_t val)
-{
-
-}
-
-
 
 MBC3::MBC3(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
 	: Cartridge(std::move(info), std::move(romData))
@@ -189,13 +171,62 @@ MBC3::~MBC3()
 
 uint8_t MBC3::Read(Address address)
 {
-	return rom[address];
+	if (addrROMBank0.Contains(address))
+	{
+		return rom[address];
+	}
+	else if (addrROMBankSwitchable.Contains(address))
+	{
+		uint32_t offset = (selectedRomBank * info.romBankSize) + (address - addrROMBankSwitchable.start);
+		return (offset < rom.size()) ? rom[offset] : 0xFF;
+	}
+	else if (addrExtRAM.Contains(address))
+	{
+		if (selectedRamBank <= 0x07)
+		{
+			uint32_t offset = (selectedRamBank * info.ramBankSize) + (address - addrExtRAM.start);
+			return (offset < ram.size()) ? ram[offset] : 0xFF;
+		}
+		else if (selectedRamBank <= 0x0C)
+		{
+			// RTC register access
+			return rtcRegisters[selectedRamBank - 0x08];
+		}
+	}
+	return 0xFF;
 }
 
 void MBC3::Write(Address address, uint8_t val)
 {
-
+	if (addrRAMEnable.Contains(address))
+	{
+		if (val == 0x0A)
+			ramEnabled = true;
+		else if (val == 0x00)
+			ramEnabled = false;
+	}
+	else if (addrBankSelector.Contains(address))
+	{
+		selectedRomBank = val & 0x7F;
+		if (selectedRomBank == 0) selectedRomBank = 1;
+	}
+	else if (addrRamBankSelector.Contains(address))
+	{
+		// 0x00 - 0x07 RAM, 0x08 - 0x0C RTC registers
+		selectedRamBank = val;
+	}
+	else if (addrLatchClockData.Contains(address))
+	{
+		// stub
+		// write 0x00 then 0x01, latch the current time into the registers
+	}
 }
+
+void MBC3::SaveState(std::ofstream& out)
+{}
+
+void MBC3::LoadState(std::ifstream & in)
+{}
 
 
 
@@ -212,6 +243,26 @@ uint8_t MBC5::Read(Address address)
 }
 
 void MBC5::Write(Address address, uint8_t val)
+{
+
+}
+
+
+
+// MBC2 Unsupported
+MBC2::MBC2(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
+	: Cartridge(std::move(info), std::move(romData))
+{}
+
+MBC2::~MBC2()
+{}
+
+uint8_t MBC2::Read(Address address)
+{
+	return rom[address];
+}
+
+void MBC2::Write(Address address, uint8_t val)
 {
 
 }
