@@ -8,6 +8,10 @@ struct GBSettings
     static constexpr float DEVICE_AUDIO_OUTPUT_RATE = 44100.0f;
     static constexpr int DEVICE_AUDIO_BUFFER_SIZE = 4096; // 2 channels(left and right), so 2048 samples for SDL to queue.
                                                           // 2048 / 44100 = 0.0464399s = 4.64ms worth of sound queued when buffer is full.
+    static bool ENABLE_AUDIO_CHANNEL_1;
+    static bool ENABLE_AUDIO_CHANNEL_2;
+    static bool ENABLE_AUDIO_CHANNEL_3;
+    static bool ENABLE_AUDIO_CHANNEL_4;
 };
 
 struct GBHardWare

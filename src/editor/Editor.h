@@ -81,6 +81,12 @@ private:
 
 };
 
+struct AudioMixer
+{
+	bool isVisible = true;
+	void Draw(GameBoy& gb, ImGuiIO& io);
+};
+
 class Editor
 {
 public:
@@ -99,6 +105,7 @@ private:
 	RomBrowser romBrowser;
 	VRAMBrowser vramBrowser;
 	TileMapBrowser tileMapBrowser;
+	AudioMixer audioMixer;
 };
 
 

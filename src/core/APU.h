@@ -106,6 +106,8 @@ public:
 	std::vector<float>& GetAudioBuffer() { return audioBuffer; }
 	void ClearAudioBuffer() { audioBuffer.clear(); }
 
+	void GetChannelVolumes(float& ch1, float& ch2, float& ch3, float& ch4);
+
 private:
 	uint8_t GetChannel1Amplitude();
 	uint8_t GetChannel2Amplitude();

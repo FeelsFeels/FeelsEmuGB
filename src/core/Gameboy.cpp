@@ -124,6 +124,11 @@ void GameBoy::SetAudioSampleRate(float sampleRate)
 	apu.SetSampleRate(sampleRate);
 }
 
+void GameBoy::GetChannelVolumes(float& ch1, float& ch2, float& ch3, float& ch4)
+{
+	apu.GetChannelVolumes(ch1, ch2, ch3, ch4);
+}
+
 void GameBoy::SaveState()
 {
 	if (!HasCartridge()) return;

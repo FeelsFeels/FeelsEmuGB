@@ -580,6 +580,68 @@ void ControlPanel::LoadState(GameBoy & gb, ImGuiIO & io)
 }
 
 
+void AudioMixer::Draw(GameBoy& gb, ImGuiIO& io)
+{
+    if (!isVisible) return;
+
+    if (ImGui::Begin("Audio Mixer", &isVisible))
+    {
+        ImGui::Text("APU Channel Toggles");
+        ImGui::Separator();
+
+        ImGui::Checkbox("Channel 1 (Square 1)", &GBSettings::ENABLE_AUDIO_CHANNEL_1);
+        ImGui::Checkbox("Channel 2 (Square 2)", &GBSettings::ENABLE_AUDIO_CHANNEL_2);
+        ImGui::Checkbox("Channel 3 (Custom Wave)", &GBSettings::ENABLE_AUDIO_CHANNEL_3);
+        ImGui::Checkbox("Channel 4 (Noise)", &GBSettings::ENABLE_AUDIO_CHANNEL_4);
+
+
+        float lvl1, lvl2, lvl3, lvl4;
+        gb.GetChannelVolumes(lvl1, lvl2, lvl3, lvl4);
+
+        lvl1 = GBSettings::ENABLE_AUDIO_CHANNEL_1 ? lvl1 : 0.0f;
+        lvl2 = GBSettings::ENABLE_AUDIO_CHANNEL_2 ? lvl2 : 0.0f;
+        lvl3 = GBSettings::ENABLE_AUDIO_CHANNEL_3 ? lvl3 : 0.0f;
+        lvl4 = GBSettings::ENABLE_AUDIO_CHANNEL_4 ? lvl4 : 0.0f;
+
+        ImGui::PushStyleColor(ImGuiCol_FrameBgActive, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+        ImGui::PushStyleColor(ImGuiCol_SliderGrab, ImVec4(0.2f, 0.8f, 0.2f, 1.0f));
+        ImGui::BeginDisabled();
+
+        ImVec2 barSize(40, 100);
+        ImGui::VSliderFloat("##L1", barSize, &lvl1, 0.0f, 1.0f, "");
+        ImGui::SameLine();
+        ImGui::VSliderFloat("##L2", barSize, &lvl2, 0.0f, 1.0f, "");
+        ImGui::SameLine();
+        ImGui::VSliderFloat("##L3", barSize, &lvl3, 0.0f, 1.0f, "");
+        ImGui::SameLine();
+        ImGui::VSliderFloat("##L4", barSize, &lvl4, 0.0f, 1.0f, "");
+
+        ImGui::EndDisabled();
+        ImGui::PopStyleColor(2);
+
+        ImGui::Text(" CH1    CH2    CH3    CH4 ");
+
+        if (ImGui::Button("Enable All"))
+        {
+            GBSettings::ENABLE_AUDIO_CHANNEL_1 = true;
+            GBSettings::ENABLE_AUDIO_CHANNEL_2 = true;
+            GBSettings::ENABLE_AUDIO_CHANNEL_3 = true;
+            GBSettings::ENABLE_AUDIO_CHANNEL_4 = true;
+        }
+        if (ImGui::Button("Mute All"))
+        {
+            GBSettings::ENABLE_AUDIO_CHANNEL_1 = false;
+            GBSettings::ENABLE_AUDIO_CHANNEL_2 = false;
+            GBSettings::ENABLE_AUDIO_CHANNEL_3 = false;
+            GBSettings::ENABLE_AUDIO_CHANNEL_4 = false;
+        }
+    }
+
+    ImGui::End();
+}
+
+
+
 void Editor::Init(Renderer* p)
 {
     renderer = p; 
@@ -601,6 +663,18 @@ void Editor::Render(GameBoy& gb)
 			}
 			ImGui::EndMenu();
 		}
+
+        if (ImGui::BeginMenu("View"))
+        {
+            ImGui::MenuItem("Debug Info", nullptr, &debugInfo.isVisible);
+            ImGui::MenuItem("Cartridge Info", nullptr, &cartInfo.isVisible);
+            ImGui::MenuItem("Control Panel", nullptr, &controlPanel.isVisible);
+            ImGui::MenuItem("VRAM Browser", nullptr, &vramBrowser.isVisible);
+            ImGui::MenuItem("Tilemap Browser", nullptr, &tileMapBrowser.isVisible);
+            ImGui::MenuItem("Audio Mixer", nullptr, &audioMixer.isVisible);
+            ImGui::EndMenu();
+        }
+
 		ImGui::EndMainMenuBar();
 	}
 
@@ -616,6 +690,7 @@ void Editor::Render(GameBoy& gb)
     controlPanel.Draw(gb, io);
     vramBrowser.Draw(gb, io);
     tileMapBrowser.Draw(gb, io);
+    audioMixer.Draw(gb, io);
 }
 
 

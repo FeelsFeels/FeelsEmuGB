@@ -675,11 +675,19 @@ void APU::Sample()
     float a3 = GetChannel3Amplitude();
     float a4 = GetChannel4Amplitude();
 
+
     // Map from [0, 15] to [-1.0, 1.0]
     a1 = ch1.channelEnabled ? (a1 / 7.5f) - 1.0f : 0.0f;
     a2 = ch2.channelEnabled ? (a2 / 7.5f) - 1.0f : 0.0f;
     a3 = (ch3.channelEnabled && ch3.dacEnabled) ? (a3 / 7.5f) - 1.0f : 0.0f;
     a4 = ch4.channelEnabled ? (a4 / 7.5f) - 1.0f : 0.0f;
+
+
+    // Extra debugging/for fun mix
+    a1 = GBSettings::ENABLE_AUDIO_CHANNEL_1 ? a1 : 0.0f;
+    a2 = GBSettings::ENABLE_AUDIO_CHANNEL_2 ? a2 : 0.0f;
+    a3 = GBSettings::ENABLE_AUDIO_CHANNEL_3 ? a3 : 0.0f;
+    a4 = GBSettings::ENABLE_AUDIO_CHANNEL_4 ? a4 : 0.0f;
 
     // Panning (NR51)
     // Bits 0-3 map to Right output. Bits 4-7 map to Left output.
@@ -761,6 +769,24 @@ uint8_t APU::GetChannel4Amplitude()
         return 0;
 }
 
+
+// Editor stuff
+void APU::GetChannelVolumes(float& a, float& b, float& c, float& d)
+{
+    a = ch1.channelEnabled ? (ch1.currentVolume / 15.0f) : 0.0f;
+    b = ch2.channelEnabled ? (ch2.currentVolume / 15.0f) : 0.0f;
+    d = ch4.channelEnabled ? (ch4.currentVolume / 15.0f) : 0.0f;
+
+    if (!ch3.channelEnabled || !ch3.dacEnabled)
+    {
+        c = 0.0f;
+    }
+    else
+    {
+        c = GetChannel3Amplitude();
+        c = (ch3.channelEnabled && ch3.dacEnabled) ? (c / 7.5f) - 1.0f : 0.0f;
+    }
+}
 
 /*
 Trigger (Write-only): Writing any value to NR14 with this bit set triggers the channel, causing the following to occur:
