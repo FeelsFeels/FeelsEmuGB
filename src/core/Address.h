@@ -133,7 +133,10 @@ static constexpr AddressRange addrBankSelector		   { 0x2000, 0x3FFF };
 static constexpr AddressRange addrBankSelector2		   { 0x4000, 0x5FFF };
 static constexpr AddressRange addrBankingMode		   { 0x6000, 0x7FFF };
 
-//MBC3
+// MBC3
 static constexpr AddressRange addrRamBankSelector	   { 0x4000, 0x5FFF };
 static constexpr AddressRange addrLatchClockData	   { 0x6000, 0x7FFF };
-//static constexpr AddressRange addrRtcRegisters		   { 0x08, 0x0C };
+
+// MBC5
+static constexpr AddressRange addrRomBankSelectorLSB   { 0x2000, 0x2FFF };
+static constexpr AddressRange addrRomBankSelectorMSB   { 0x3000, 0x3FFF };

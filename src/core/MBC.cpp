@@ -220,13 +220,44 @@ void MBC3::Write(Address address, uint8_t val)
 		// stub
 		// write 0x00 then 0x01, latch the current time into the registers
 	}
+	else if (addrExtRAM.Contains(address))
+	{
+		if (selectedRamBank <= 0x07)
+		{
+			uint32_t offset = (selectedRamBank * info.ramBankSize) + (address - addrExtRAM.start);
+			if (offset < ram.size())
+			{
+				ram[offset] = val;
+
+				if (info.hasBattery) ramDirty = true;
+			}
+		}
+		else if (selectedRamBank <= 0x0C)
+		{
+			// Stub. unsure of RTC register write behaviour
+		}
+	}
 }
 
 void MBC3::SaveState(std::ofstream& out)
-{}
+{
+	Cartridge::SaveState(out);
+
+	GBWrite(out, selectedRomBank);
+	GBWrite(out, selectedRamBank);
+	GBWrite(out, ramEnabled);
+	GBWrite(out, rtcRegisters);
+}
 
 void MBC3::LoadState(std::ifstream & in)
-{}
+{
+	Cartridge::LoadState(in);
+
+	GBRead(in, selectedRomBank);
+	GBRead(in, selectedRamBank);
+	GBRead(in, ramEnabled);
+	GBRead(in, rtcRegisters);
+}
 
 
 
@@ -239,12 +270,67 @@ MBC5::~MBC5()
 
 uint8_t MBC5::Read(Address address)
 {
-	return rom[address];
+	if (addrROMBank0.Contains(address))
+	{
+		return rom[address];
+	}
+	else if (addrROMBankSwitchable.Contains(address))
+	{
+		uint16_t selectedBank = romBankLow + (romBankHigh << 8);
+		uint32_t offset = (selectedBank * info.romBankSize) + (address - addrROMBankSwitchable.start);
+		return (offset < rom.size()) ? rom[offset] : 0xFF;
+	}
+	else if (addrExtRAM.Contains(address))
+	{
+		uint32_t offset = (ramBank * info.ramBankSize) + (address - addrExtRAM.start);
+		return (offset < ram.size()) ? ram[offset] : 0xFF;
+	}
+	return 0xFF;
 }
 
 void MBC5::Write(Address address, uint8_t val)
 {
+	if (addrRAMEnable.Contains(address))
+	{
+		// Actual MBCs actually enable RAM when writing any value whose bottom 4 bits equal $A (so $0A, $1A, and so on), 
+		// and disable it when writing anything else. Relying on this behavior is not recommended for compatibility reasons.
+		if (val == 0x0A)
+			ramEnabled = true;
+		else if (val == 0x00)
+			ramEnabled = false;
+	}
+	else if (addrRomBankSelectorLSB.Contains(address))
+	{
+		romBankLow = val;
+	}
+	else if (addrRomBankSelectorMSB.Contains(address))
+	{
+		romBankHigh = val;
+	}
+	else if (addrRamBankSelector.Contains(address))
+	{
+		ramBank = val;
+	}
+}
 
+void MBC5::SaveState(std::ofstream& out)
+{
+	Cartridge::SaveState(out);
+
+	GBWrite(out, romBankLow);
+	GBWrite(out, romBankHigh);
+	GBWrite(out, ramBank);
+	GBWrite(out, ramEnabled);
+}
+
+void MBC5::LoadState(std::ifstream & in)
+{
+	Cartridge::LoadState(in);
+
+	GBRead(in, romBankLow);
+	GBRead(in, romBankHigh);
+	GBRead(in, ramBank);
+	GBRead(in, ramEnabled);
 }
 
 
