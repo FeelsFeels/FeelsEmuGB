@@ -7,6 +7,7 @@
 class Timer;
 class CPU;
 class PPU;
+class APU;
 class Joypad;
 
 // Think of this as the motherboard
@@ -24,15 +25,18 @@ public:
 
 	void AttachCartridge(Cartridge* cart) 
 	{ 
-		debugString.clear(); cartridge = cart; 
+		cartridge = cart; // Trust that my gameboy doesn't ever destroy the cartridge
 		std::fill(wram.begin(), wram.end(), 0); 
 		std::fill(hram.begin(), hram.end(), 0);
 		std::fill(io.begin(), io.end(), 0);
 	}
 	void RemoveCartridge() { cartridge = nullptr; }
+	bool HasCartridge() { return cartridge != nullptr; }
+
 
 	void AttachCPU(CPU* p) { cpu = p; }
 	void AttachPPU(PPU* p) { ppu = p; }
+	void AttachAPU(APU* p) { apu = p; }
 	void AttachTimer(Timer* p) { timer = p; }
 	void AttachJoypad(Joypad* p) { joypad = p; }
 
@@ -45,6 +49,7 @@ private:
 	Cartridge* cartridge;
 	CPU* cpu;
 	PPU* ppu;
+	APU* apu;
 	Timer* timer;
 	Joypad* joypad;
 

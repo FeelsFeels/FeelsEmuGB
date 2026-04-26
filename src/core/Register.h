@@ -3,6 +3,56 @@
 using ByteRegister = uint8_t;
 using WordRegister = uint16_t;
 
+namespace Bit
+{
+    template <typename T>
+    constexpr void Set(T& reg, uint8_t bit)
+    {
+        reg |= (static_cast<T>(1) << bit);
+    }
+
+    template <typename T>
+    constexpr void Clear(T& reg, uint8_t bit)
+    {
+        reg &= ~(static_cast<T>(1) << bit);
+    }
+
+    template <typename T>
+    constexpr void Toggle(T& reg, uint8_t bit)
+    {
+        reg ^= (static_cast<T>(1) << bit);
+    }
+
+    template <typename T>
+    constexpr bool Test(T reg, uint8_t bit)
+    {
+        return (reg >> bit) & 1;
+    }
+
+    // Assign boolean state to a bit
+    template <typename T>
+    constexpr void Assign(T& reg, uint8_t bit, bool state)
+    {
+        T mask = static_cast<T>(1) << bit;
+        reg = (reg & ~mask) | ((static_cast<T>(state) << bit) & mask);
+    }
+
+    // Copy a specific bit from src to dst
+    template <typename T>
+    constexpr void Copy(T& dst, T src, uint8_t bit)
+    {
+        T mask = static_cast<T>(1) << bit;
+        dst = (dst & ~mask) | (src & mask);
+    }
+
+    // Mask and Merge
+    template <typename T>
+    constexpr void Merge(T& reg, T data, T writeMask)
+    {
+        reg = (reg & ~writeMask) | (data & writeMask);
+    }
+}
+
 struct Registers
 {
     // AF Pair
@@ -71,3 +121,5 @@ struct Registers
     void SetH(bool val) { if (val) f |= 0x20; else f &= ~0x20; }
     void SetC(bool val) { if (val) f |= 0x10; else f &= ~0x10; }
 };
+
+

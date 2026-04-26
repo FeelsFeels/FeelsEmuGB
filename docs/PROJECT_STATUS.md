@@ -44,7 +44,9 @@ The emulator is currently capable of running major commercial titles including *
 ### 3. Accuracy Improvements
 - **OAM DMA:** Currently instantaneous. Should block CPU for ~160 microseconds.
 - **Pixel FIFO:** PPU currently renders scanlines instantly. A Pixel FIFO implementation is required for precise mid-scanline effects (like the wobbling in *Prehistorik Man*).
+- **APU** - DIV-APU ticks based on raw cycles instead of depending on the div register.
 - **List of failed Blargg tests:** cgb_sound, dg_sound, interrupt_time, mem_timing, oam_bug, halt_bug.
+- **Failed Tests for Sound:** 
 
 ### 4. Editor Improvements
 - **Window viewport box visualizer:** Maybe in red.
@@ -55,5 +57,16 @@ The emulator is currently capable of running major commercial titles including *
 ## 🐞 Known Quirks / Bugs
 2.  **Sprite Limits:** The 10-sprites-per-line limit is not implemented (visuals might be *too* perfect compared to real hardware).
 3.  **CGB Mode:** CGB Flags are detected, but CGB-specific registers (VRAM banking, Palette RAM) are ignored. Games play in DMG (Monochrome) mode.
+
+---
+
+## 💭 Dreams and thoughts and admissions
+1.  **Architecture:** Currently rendered entirely via imgui textures. Not feasible for the future, if I want to "ship it". The dream is to try something like Emscripten to compile it and host it on the web.  
+Need to find a better way to display UI along with the actual game itself.  
+
+2.  **Features:** I want to implement the link cable. Local link cable should be possible, but I want to try to make it work over the network as well, somehow.  
+I also think it'll be cool if I had something like a split screen play with your friend over the web kinda thing. I feel it'll be really cool for the purposes of speedrunning challenges. That's a challenge for another day though.  
+I played with DeSmuME once, and I was so impressed with how many debugging features they had. I want to try that too...  
+Also want to make a tracker for the GB audio system. Would be fun.  
 
 ---

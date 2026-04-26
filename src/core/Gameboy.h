@@ -4,6 +4,7 @@
 #include "Timer.h"
 #include "CPU.h"
 #include "PPU.h"
+#include "APU.h"
 #include "Joypad.h"
 
 #include <memory>
@@ -15,8 +16,9 @@ public:
 	~GameBoy();
 
 	void InsertCartridge(std::string filepath);
+	bool HasCartridge() const { return cart != nullptr; }
 
-	const CartridgeInfo& GetCartInfo() const;
+	const CartridgeInfo* GetCartInfo() const;
 	const std::string& GetCartPath() const { return pathToCartridge; };
 
 	int Update();
@@ -27,6 +29,9 @@ public:
 
 	void UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboard);
 
+	void SetAudioSampleRate(float sampleRate);
+	std::vector<float>& GetAudioBuffer() { return apu.GetAudioBuffer(); }
+	void ClearAudioBuffer() { apu.ClearAudioBuffer(); }
 private:
 	friend class DebugInfo;
 	friend class VRAMBrowser;
@@ -38,6 +43,7 @@ private:
 	Bus bus;
 	CPU cpu;
 	PPU ppu;
+	APU apu;
 	Timer timer;
 	Joypad joypad;
 };

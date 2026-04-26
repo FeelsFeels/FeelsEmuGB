@@ -66,7 +66,7 @@ void VRAMBrowser::Draw(GameBoy& gb, ImGuiIO& io)
 
     UpdateBuffer(gb);
 
-    if (ImGui::Begin("VRAM", &isVisible))
+    if (ImGui::Begin("VRAM", &isVisible) && gb.HasCartridge())
     {
         float scale = 2.0f;
         ImVec2 imageSize(WIDTH * scale, HEIGHT * scale);
@@ -195,7 +195,7 @@ void TileMapBrowser::Draw(GameBoy& gb, ImGuiIO& io)
 
     UpdateBuffer(gb);
 
-    if (ImGui::Begin("Tilemap Viewport", &isVisible))
+    if (ImGui::Begin("Tilemap Viewport", &isVisible) && gb.HasCartridge())
     {
         ImGui::Checkbox("Draw Viewport Box", &drawViewportBox); 
         ImGui::SameLine();
@@ -394,18 +394,21 @@ void CartInfo::Draw(GameBoy& gb, ImGuiIO& io)
 
         ImGui::Text("Cartridge: %s", gb.GetCartPath().c_str());
         auto info = gb.GetCartInfo();
-        ImGui::Text("MBC Type: %s", info.cartTypeString.c_str());
-        ImGui::Text("Rom Size: %u", info.romSizeBytes);
-        ImGui::Text("Rom Banks: %u", info.romBanks);
-        ImGui::Text("Ram Size: %u", info.ramSizeBytes);
-        ImGui::Text("Ram Banks: %u", info.ramBanks);
-        ImGui::Text("Has Ram: %s", info.hasRam ? "TRUE" : "FALSE");
-        ImGui::Text("Has Battery: %s", info.hasBattery ? "TRUE" : "FALSE");
-        ImGui::Text("Has Timer: %s", info.hasTimer ? "TRUE" : "FALSE");
+        if (info)
+        {
+            ImGui::Text("MBC Type: %s", info->cartTypeString.c_str());
+            ImGui::Text("Rom Size: %u", info->romSizeBytes);
+            ImGui::Text("Rom Banks: %u", info->romBanks);
+            ImGui::Text("Ram Size: %u", info->ramSizeBytes);
+            ImGui::Text("Ram Banks: %u", info->ramBanks);
+            ImGui::Text("Has Ram: %s", info->hasRam ? "TRUE" : "FALSE");
+            ImGui::Text("Has Battery: %s", info->hasBattery ? "TRUE" : "FALSE");
+            ImGui::Text("Has Timer: %s", info->hasTimer ? "TRUE" : "FALSE");
 
-        ImGui::Separator();
+            ImGui::Separator();
 
-        ImGui::Text("CGB Flag: %s", info.cgbFlag ? "TRUE" : "FALSE");
+            ImGui::Text("CGB Flag: %s", info->cgbFlag ? "TRUE" : "FALSE");
+        }
 
     }
     ImGui::End();
@@ -417,7 +420,7 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
 {
     if (!isVisible) return;
 
-    if (ImGui::Begin("CPU Info", &isVisible))
+    if (ImGui::Begin("CPU Info", &isVisible) && gb.HasCartridge())
     {
         const Registers& r = gb.cpu.reg;
 

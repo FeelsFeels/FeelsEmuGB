@@ -17,7 +17,7 @@ public:
 
 	static std::unique_ptr<Cartridge> CreateCartridge(std::vector<uint8_t>&& romData, std::string filepath);
 
-	CartridgeInfo const& GetInfo() { return info; }
+	const CartridgeInfo* GetInfo() { return &info; }
 
 	virtual void SaveState(std::ofstream& out);
 	virtual void LoadState(std::ifstream& in);

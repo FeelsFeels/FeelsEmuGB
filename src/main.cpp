@@ -3,7 +3,7 @@
 #include "GameBoySettings.h"
 #include "core/Gameboy.h"
 #include "editor/Editor.h"
-#include "graphics/Renderer.h"
+#include "interface/Renderer.h"
 
 #include <glad/glad.h>
 #include <SDL.h>
@@ -16,11 +16,6 @@
 // Screen dimensions
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
-
-void HandleInput(GameBoy& gb)
-{
-
-}
 
 
 int main(int argc, char* argv[])
@@ -66,6 +61,20 @@ int main(int argc, char* argv[])
     SDL_GL_MakeCurrent(window, gl_context);
     SDL_GL_SetSwapInterval(1); // Enable V-Sync
 
+    SDL_GetTicks64(); // Initialize timer
+
+    SDL_Init(SDL_INIT_AUDIO);
+    SDL_AudioSpec desiredSpec = {};
+    desiredSpec.freq = 44100;
+    desiredSpec.format = AUDIO_F32; // 32-bit floats
+    desiredSpec.channels = 2;       // Stereo
+    desiredSpec.samples = 2048;     // Buffer size
+    desiredSpec.callback = nullptr; // Manually push data
+    SDL_AudioDeviceID audioDeviceID = SDL_OpenAudioDevice(nullptr, 0, &desiredSpec, nullptr, 0);
+    // Unpause the device to let it start playing
+    SDL_PauseAudioDevice(audioDeviceID, 0);
+
+
     // Load OpenGL pointers
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
     {
@@ -88,21 +97,19 @@ int main(int argc, char* argv[])
 #pragma endregion
 
     GameBoy* gameboy = new GameBoy();
-    gameboy->InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
+    gameboy->SetAudioSampleRate(static_cast<float>(GBHardWare::MASTER_CLOCK) / static_cast<float>(GBSettings::DEVICE_AUDIO_OUTPUT_RATE));
+    //gameboy->InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
 
     Renderer renderer;
     renderer.Init();
     GLuint gameTexture = renderer.CreateTexture(160, 144);
 
-#ifdef _DEBUG
     Editor editor;
     editor.Init(&renderer);
-#endif
 
     // Keyboard input
     std::unordered_map<SDL_Scancode, ButtonState> keyboard;
 
-    SDL_GetTicks64(); // Initialize timer
 
     bool done = false;
     while (!done)
@@ -142,10 +149,7 @@ int main(int argc, char* argv[])
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
 
-        // IMGUI CODE
-#ifdef _DEBUG
         editor.Render(*gameboy);
-#endif
 
         // GAMEBOY LOOP HERE
         // Run CPU for 1 frame
@@ -157,6 +161,34 @@ int main(int argc, char* argv[])
         {
             int cycles = gameboy->Update();
             if (cycles <= 0) break;
+
+            const auto& audioBuffer = gameboy->GetAudioBuffer();
+            if (audioBuffer.size() >= GBSettings::DEVICE_AUDIO_BUFFER_SIZE)
+            {
+                if (GBSettings::RUNTIME_SPEED != 1.0f)
+                {
+                    // FAST FORWARD MODE
+                    // If the audio queue has space, queue it.
+                    // If queue is full, don't do anything. Drop audio.
+                    if (SDL_GetQueuedAudioSize(audioDeviceID) <= 4096 * sizeof(float) * 2)
+                    {
+                        SDL_QueueAudio(audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
+                    }
+                }
+                else
+                {
+                    // NORMAL MODE
+                    // Strict Audio Syncing
+                    while (SDL_GetQueuedAudioSize(audioDeviceID) > 4096 * sizeof(float) * 2)
+                    {
+                        SDL_Delay(1);
+                    }
+                    SDL_QueueAudio(audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
+                }
+
+                gameboy->ClearAudioBuffer();
+            }
+
             cyclesThisFrame += cycles;
         }
         renderer.UpdateTexture(gameTexture, 160, 144, gameboy->GetScreenBuffer().data());
@@ -208,7 +240,6 @@ int main(int argc, char* argv[])
             }
         }
     }
-//#endif
 
     delete gameboy;
 

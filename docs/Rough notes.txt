@@ -20,7 +20,7 @@ https://github.com/retrio/gb-test-roms
 ====== Design Decisions ======
 ==============================
 My emulator is built with the goal of helping myself (and others!) better understand the Game Boy.
-I want lots of debug info. I want the ability to inspect the values. I want the user to KNOW what is happening under the hood.
+I want lots of debug info. I want the ability to inspect the values. I want the user to know what is happening under the hood.
 I want to implement the scrolling visualizer just like the Ultimate Game Boy Talk displayed.
 I want a sound visualizer as well.
 
@@ -32,9 +32,9 @@ Components:
 Game Boy
 CPU
 Bus/MMU
-PPU
+PPU (Pixel Processing Unit)
 Cartridge
-
+APU (Audio)
 
 ====================
 ====== NOTES =======
@@ -144,11 +144,12 @@ After finishing, the boot ROM hands off control to the cartridge at 0x0100.
 On the Timer:
 https://github.com/Ashiepaws/GBEDG/blob/master/timers/index.md
 Timer registers:
-*UINT16_T* div { 0 };	// Divider. Always increments at a rate of rate of 16384Hz. This is your "true" counter of how many cycles have passed
+*UINT16_T* div { 0 };	// Divider. For the software, increments at a rate of rate of 16384Hz(once every 256 T-cycles). This is your "true" counter of how many cycles have passed
 uint8_t tima{ 0 };	    // Timer counter. Increments at TAC frequency. 
 uint8_t tma { 0 };	    // Modulo. tima resets to tma when tima overflows.
 uint8_t tac { 0 };      // Controller. Controls timer enabled, clock speed, etc
 
+DIV, to the software, appears as an 8-bit register incremented every 256 cycles. However, internally, the DIV is a 16-bit register incremented every T-Cycle.
 TIMA, on overflow, triggers a hardware TIMER interrupt.
 TIMA ticks on falling edge, that is, when the target bit on DIV(target controlled in tac), goes from 1 -> 0, tima increments.
 Timer bug - this falling edge detector actually depends on BOTH timerEnabled and the target bit, so writing to tac at sometimes would trigger tima++.
@@ -254,11 +255,14 @@ But note that the color index 0 is ignored for OBJ since 0 is transparent for OB
 Each object chooses which palette to use from it's OAM entry (see above, "DMG Palette").
 
 
-
+Deeper understanding of the clock.
+The Master clock runs at 4.194304Mhz. So 4,194,304 cycles per second. This is in T-Cycles.
+T-Cycles are the smallest unit of measurable time.
+M-Cycles are the useful units of time. In the gameboy's case, 4 T cycles -> 1 M cycle.
 
 Timing for graphics:
 GB resolution: 160 x 144
-Dots are same as cycles, one 4.194 Mhz time unit.
+Dots are same as cycles, one 4.194 Mhz time unit. 1 Dot = 1/4,194,304 second
 A frame consists of 154 scanlines (rows).
 The gameboy's screen height is 144 pixels, and the PPU also defines a 10 extra scanline duration as it's V-blank (144 + 10) = 154 scanlines
 One scanline is drawn in 456 dots, so total times taken for one frame is 456 x 154 = 70244 dots.
@@ -293,3 +297,292 @@ Bit 1-0: PPU Mode (read-only)
   01 = Mode 1 (VBlank)
   10 = Mode 2 (OAM Search)
   11 = Mode 3 (Drawing)
+
+
+=================================================
+
+On the Audio:
+
+https://xiph.org/video/vid1.shtml
+https://nightshade256.github.io/2021/03/27/gb-sound-emulation.html
+https://www.reddit.com/r/EmuDev/comments/1mx2k5e/audio_emulation_101_game_boy_example/
+https://www.reddit.com/r/EmuDev/comments/5gkwi5/gb_apu_sound_emulation/
+https://gbdev.gg8.se/wiki/articles/Gameboy_sound_hardware <- this one contains the best explanations
+
+Common Terminology:
+DAC - Digital to Analog Converter. Converts binary data to electrical voltage. The electricity then vibrates the speaker to produce sound.
+Amplitude - How high a wave goes. Volume.
+Frequency - How fast the wave repeats. How many cycles/time. High frequency = higher pitch
+
+
+
+4 different channels. There is a secret 5th VIN channel inside cartridges that is unused.
+2 Pulse Channels (producing Square Waves), 1 Wave, 1 Noise.
+Think about each channel as an instrument, all playing at the same time.
+In this regard, the GB's audio system is more of a synthesizer.
+Each channel produces a wave, which you produce an audio sample from.
+
+3 "Master control" registers.
+0xFF26/NR52 - APU enable/disable
+0xFF25/NR51 - Sound panning
+0xFF24/NR50 - Volume control
+
+In general, all 4 different types of channels have 5 registers(1 byte) for each of them.
+Going by pandocs notation system, NRxy, where x is the channel number, and y is the registers for each of the channels. x=5 is for global controls
+These registers control (in general):
+NRx0: specific channel behaviour (Pulse A has sweep)
+NRx1: Length timer
+NRx2: Volume and Envelope(how sound changes over time) control
+NRx3: Frequency/Period
+NRx4: Control(on/off), Timers, and extra frequency bits.
+
+0xFF26: The audio master Register
+Bit 7  : Audio on/off
+Bit 6-4: Unused
+Bit 3-0: Read only. This is a check for whether audio channels 4-1 is on. (QUESTION: I asssume 1 is on? Or is it like input where 0 is on?)
+
+0xFF25: Sound panning.
+The Game Boy has binary sound panning. If you have Stereo sound, sound has the ability to come out only in the left ear or right ear.
+To hear sound only in the left ear, set Left bit to 1, and Right bit to 0.
+For centered sound, set both bits to 1.
+
+Bit 7-4: Left panning for channels 4-1
+Bit 3-0: Right panning for channels 4-1
+
+0xFF24: Master Volume control, VIN panning.
+VIN stands for Voltage Input. In the context of the Game Boy, it refers to External Sound Input. Set to 0 if external sound is not being used.
+For volume control, value of 0 is very quiet, value of 7 is loudest.
+Bit 7  : VIN left
+Bit 6-4: Volume left
+Bit 3  : VIN right
+Bit 2-0: Volume right
+
+
+Overview of what kind of sounds the four channels make:
+Pulse 1 and 2 - The Square Waveforms
+A square wave is a sound wave with only two distinct amplitudes, up and down.
+Rapidly switches a voltage between High and Low. 
+There are only four distinct, predetermined waveforms you can use, controlled by the 2 Duty cycle bits.
+12.5%, 25%, 50%, 75%. There is no audible difference between 25% and 75%.
+For example, a 50% waveform and 25% might look like this:
+High      ________                      High      ____
+         |        |                              |    |
+Low    __|        |________ repeating   Low    __|    |______   repeating
+The sample sound made is 0 when down, and the amplitude is controllable by volume bits when up.
+Pulse 1 has a sweep channel. This sweep is extra control for frequency.
+
+Wave channel
+Has 16 bytes of Wave RAM. Each byte holds two samples, each 4 bits(15 values).
+Unlike the Square Waveforms which only allow you to control frequency and amplitude, this wave RAM allows you to control the shape as well.
+Value
+ 15 |      __
+    |    /    \
+    |   /      \
+  0 |__/________\__
+    (32 samples of custom data)
+To better understand frequency, think of it as how fast this wave table above is being played.
+Frequency has nothing to do with the shape of the wave.
+
+
+Important thing to understand:
+> The registers hold data, but the audio sample is produced from an internal state.
+The internal state is modified via Ticking the APU. The registers, instead of storing audio data,
+is closer to storing the settings for the audio data, or controlling it.
+
+> Also important is the idea of triggering. From pandocs, talking about NR12 (volume and envelope):
+  | Writes to this register while the channel is on require retriggering it afterwards. 
+  | If the write turns the channel off, retriggering is not necessary (it would do nothing).
+This means a game developer is supposed to set the state, trigger the channel, and then let it do it's thing.
+This means that we need to keep track of the internal state, like initial volume.
+BUT, WHAT THE FUCK. Referencing SameBoy, only the initial volume state is saved.
+
+Actual registers and internal state for the four sound channels:
+
+>>>Channel 1
+NR10, NR11, NR12, NR13, NR14
+uint8_t NR10;	// -PPP NSSS: Sweep pace, Direction, Step
+NR10 holds the information to change the pitch(frequency) over time.
+Every (PPP * 128Hz)ms, take current frequency, and calculate the new one based on direction and step.
+PPP == 000 means disabled.
+This frequency is an 11 bit number, stored in registers NR13 and NR14.
+
+Internal state:
+channelEnabled: Turned ON when CPU writes to NRx4 and sets the trigger bit.
+                Turned OFF when lengthCounter reaches zero and length enable bit active
+                Turned OFF when global APU enable is turned OFF.
+
+frequencyTimer: decremented every T-cycle.
+                when hits zero, reloads value, and duty index advances.
+                reloaded when channel is triggered. Reloads with the 11 bits in NRx3 and NRx4.
+
+dutyPointer: pointer to predefined wave table for square waves.
+
+lengthCounter: Mutes channel after specific duration. Initial Length stored in NRx1 lower 6 bits.
+               Decremented every 256Hz.
+               Reloaded with maximum value(64) on trigger event, if counter is 0. 
+
+currentVolume: Its just current volume. 
+               When triggered, loaded with initial value from NRx2. Will be decreased over time via envelope.
+
+envelopeTimer: When triggered, loaded with initial value from NRx2 Sweep pace. 
+               When ticked, decrements when envelope clock is ticked. When hits 0, currentvolume increases or decreases based on NRx2 env dir.
+                
+
+
+Channel 2:
+      NR21, NR22, NR23, NR24
+Same as 1 without sweep
+
+
+Channel 3:
+NR30, NR31, NR32, NR33, NR34
+
+Channel 4:
+      NR41, NR42, NR43, NR44
+https://www.youtube.com/watch?v=Ks1pw1X22y4 Random Numbers with LFSR - Computerphile
+
+
+
+Timing the APU:
+Reminder that the CPU runs at 4194304Hz.
+Inside the APU, there are two different "Timers".
+The first is the lower frequency DIV-APU. I believe it's also called a frame sequencer?
+The second is the high frequency timer that handles the audio waveform generation. Things like the period clocks in CH1/3, once every 4/2 dots.
+
+"A “DIV-APU” counter is increased every time DIV’s bit 4 goes from 1 to 0, therefore at a frequency of 512 Hz."
+So, the DIV-APU ticks when the 12th bit in the 16-bit div register's falling edge is triggered.
+Meaning the DIV-APU ticks every 8192 T-Cycles.
+4194304 / 2^13 = 4194304 / 8192 = 512Hz
+
+Furthermore, there are events triggered every N DIV-APU ticks, described in the table below.
+Step, Sound Length, CH1 sweep, Envelope Sweep
+0,    Tick,         ----,      ----
+1,    ----,         ----,      ----
+2,    Tick,         Tick,      ----
+3,    ----,         ----,      ----
+4,    Tick          ----,      ----
+5,    ----,         ----,      ----
+6,    Tick          Tick,      Tick
+7,    ----,         ----,      ----
+
+
+Imagine the two clocks running parallel in time:
+The High-Frequency Oscillator (runs extremely fast):
+- Counts down timerCycles.
+- Hits 0! Advances the duty pointer (flips the speaker).
+- Looks at the current shadowFrequency.
+- Reloads timerCycles = (2048 - shadowFrequency) * 4.
+- Repeats hundreds of times.
+
+The Frame Sequencer (runs extremely slow):
+- Wakes up once every 8192 T-Cycles.
+- The Sweep math calculates a new pitch.
+- It overwrites shadowFrequency with the new pitch.
+- It instantly overwrites the current timerCycles countdown so the pitch bend takes effect immediately instead of waiting for the current cycle to finish.
+
+
+-----------------------------------------------------------------
+       Square 1
+NR10 FF10 -PPP NSSS Sweep period, negate, shift
+NR11 FF11 DDLL LLLL Duty, Length load (64-L)
+NR12 FF12 VVVV APPP Starting volume, Envelope add mode, period
+NR13 FF13 FFFF FFFF Frequency LSB
+NR14 FF14 TL-- -FFF Trigger, Length enable, Frequency MSB
+
+       Square 2
+     FF15 ---- ---- Not used
+NR21 FF16 DDLL LLLL Duty, Length load (64-L)
+NR22 FF17 VVVV APPP Starting volume, Envelope add mode, period
+NR23 FF18 FFFF FFFF Frequency LSB
+NR24 FF19 TL-- -FFF Trigger, Length enable, Frequency MSB
+
+       Wave
+NR30 FF1A E--- ---- DAC power
+NR31 FF1B LLLL LLLL Length load (256-L)
+NR32 FF1C -VV- ---- Volume code (00=0%, 01=100%, 10=50%, 11=25%)
+NR33 FF1D FFFF FFFF Frequency LSB
+NR34 FF1E TL-- -FFF Trigger, Length enable, Frequency MSB
+
+       Noise
+     FF1F ---- ---- Not used
+NR41 FF20 --LL LLLL Length load (64-L)
+NR42 FF21 VVVV APPP Starting volume, Envelope add mode, period
+NR43 FF22 SSSS WDDD Clock shift, Width mode of LFSR, Divisor code
+NR44 FF23 TL-- ---- Trigger, Length enable
+
+       Control/Status
+NR50 FF24 ALLL BRRR Vin L enable, Left vol, Vin R enable, Right vol
+NR51 FF25 NW21 NW21 Left enables, Right enables
+NR52 FF26 P--- NW21 Power control/status, Channel length statuses
+
+       Not used
+     FF27 ---- ----
+     .... ---- ----
+     FF2F ---- ----
+
+       Wave Table
+     FF30 0000 1111 Samples 0 and 1
+     ....
+     FF3F 0000 1111 Samples 30 and 31
+-----------------------------------------------------
+
+Shitty summary
+Phase 1: The Blueprint (Memory & Registers)
+The NRxx registers (0xFF10 to 0xFF3F) are simply the control dials on the front of the factory.
+When the Game Boy CPU executes an instruction that writes to memory, it is turning these dials.
+Crucial Concept: Turning a dial usually does absolutely nothing to the active sound. It just updates the blueprint for the next time the machine is turned on.
+
+Phase 2: The Spark (The Trigger Event)
+The entire factory sits idle until the CPU writes a 1 to Bit 7 of NRx4. 
+This is the big red "START" button. When this happens, the APU executes a Trigger Event.
+It forcefully reads all the dials (the Blueprint) and copies those values deep into the machine's internal memory (the Engine).
+It resets the internal timers, reloads the lengths, and flips channelEnabled = true. The factory roars to life.
+
+Phase 3: The Dual-Clock Engine
+Once the channel is enabled, it is governed by two completely separate clocks running in parallel. 
+This is the heart of your APU::Tick(int cycles) function.
+    Clock A: The Conductor (The Frame Sequencer)
+Speed: Very slow (512 Hz, or exactly once every 8,192 T-Cycles).
+Job: To handle the musicality of the sound. It does not generate audio waves; it shapes them over time.
+Flow: It steps through an 8-step sequence.
+On certain steps, it tells the Length Counter to tick down. (If it hits 0, it hits the kill switch: channelEnabled = false).
+On certain steps, it tells the Volume Envelope to tick down. (If it hits 0, it nudges the internal currentVolume up or down by 1).
+On certain steps, it tells the Sweep to calculate a new pitch. (If applied, it dynamically overwrites the shadowFrequency and instantly updates the Oscillator).
+    Clock B: The Musicians (The Oscillators)
+Speed: Extremely fast (Up to 1,048,576 Hz).
+Job: To generate the raw physical sound waves.
+Flow: Each channel has a frequencyTimer countdown variable. 
+Every single CPU T-Cycle, this timer drops.
+When frequencyTimer hits 0, the channel takes exactly one step forward in its physical waveform.
+Square (Ch 1 & 2): It moves the dutyPointer by 1, outputting either high or low voltage based on the 8-step pattern.
+Wave (Ch 3): It moves the wavePosition by 1, outputting the specific 4-bit sample from Wave RAM.
+Noise (Ch 4): It shifts the 15-bit LFSR by 1, outputting static based on the new Bit 0.
+
+Phase 4: The Output (The Mixer)
+The APU Engine is completely disconnected from your PC's speakers. It just runs in the background, furiously flipping duty pointers and shifting volumes.
+Enter the Mixer.
+Speed: Matches your PC audio (44,100 Hz, or roughly once every 95 T-Cycles).
+Job: To take a "photograph" of the factory.
+Flow: Every 95 T-Cycles, the Mixer walks up to the 4 channels and asks, "What is your exact amplitude right now?"
+If Channel 1's channelEnabled is true, its dutyPointer is currently on a 1, and its currentVolume is 12, it hands the Mixer the number 12.
+If it's on a 0, or the channel is disabled, it hands the Mixer a 0.
+The Mixer takes these numbers from all four channels, adds them together, 
+applies panning (left/right audio via NR51), applies master volume (NR50), and pushes the final floating-point number to SDL_QueueAudio().
+
+The Summary Flowchart
+CPU Writes to NRxx -> Updates the Blueprint.
+CPU Writes to NRx4 (Bit 7) -> Triggers the Engine -> channelEnabled = true.
+Every CPU Cycle:High-Freq Clock ticks -> Advances waveform step -> Outputs an active value (0 to 15).
+Low-Freq Clock ticks (every 8192 cycles) -> Shapes the volume/pitch/duration.
+Every 95 CPU Cycles:Mixer samples the active value -> Sends to SDL -> You hear sound.
+
+
+
+
+
+
+
+
+
+
+

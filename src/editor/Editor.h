@@ -1,6 +1,6 @@
 #pragma once
 #include "../core/Gameboy.h"
-#include "../graphics/Renderer.h"
+#include "../interface/Renderer.h"
 
 #include <filesystem>
 #include <vector>

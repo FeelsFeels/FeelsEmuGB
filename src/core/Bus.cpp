@@ -2,6 +2,7 @@
 #include "Timer.h"
 #include "CPU.h"
 #include "PPU.h"
+#include "APU.h"
 #include "Joypad.h"
 
 void Bus::RunBootRom()
@@ -106,6 +107,10 @@ uint8_t Bus::Read(Address addr)
 		{
 			return ppu->Read(addr);
 		}
+		else if (addrAudioRegisters.Contains(addr))
+		{
+			return apu->Read(addr);
+		}
 		else
 		{
 			return io[addrIO.GetOffset(addr)];
@@ -159,21 +164,21 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrIO.Contains(addr))
 	{
-		if (addr == 0xFF00) // Joypad input
+		if (addr == addrJoypad)
 		{
 			joypad->Write(data);
 		}
-		if (addr == 0xFF0F)
+		if (addr == addrInterruptFlag)
 		{
 			cpu->SetIF(data);
 			return;
 		}
-		else if (addr >= 0xFF04 && addr <= 0xFF07)
+		else if (addrTimer.Contains(addr))
 		{
 			timer->Write(addr, data);
 			return;
 		}
-		else if (addr == 0xFF46)
+		else if (addr == addrDMATransfer)
 		{
 			DMATransfer(data);
 		}
@@ -181,14 +186,17 @@ void Bus::Write(Address addr, uint8_t data)
 		{
 			ppu->Write(addr, data);
 		}
-		else if (addr == 0xFF50)
+		else if (addrAudioRegisters.Contains(addr))
+		{
+			apu->Write(addr, data);
+		}
+		else if (addr == addrBootRomEnable)
 		{
 			bootRomEnabled = false;
 			return;
 		}
-		else
+		else // Fallback for unimplemented io in this range
 		{
-			// Fallback for unimplemented io in this range
 			io[addr & 0x7F] = data;
 		}
 	}

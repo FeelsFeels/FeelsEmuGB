@@ -12,6 +12,7 @@ GameBoy::GameBoy()
 
 	bus.AttachCPU(&cpu);
 	bus.AttachPPU(&ppu);
+	bus.AttachAPU(&apu);
 	bus.AttachTimer(&timer);
 	bus.AttachJoypad(&joypad);
 }
@@ -29,23 +30,26 @@ void GameBoy::InsertCartridge(std::string filepath)
 	std::vector<uint8_t> romData;
 	if (!VFS::ReadFile(filepath, romData))
 	{
-		// Warn
 		std::cout << "Insert Cartridge: Bad path: " << filepath << "\n";
 		return;
 	}
 	
-	//std::cout << "Loaded Rom: " << filepath << "\n";
 	pathToCartridge = filepath;
 	cart = Cartridge::CreateCartridge(std::move(romData), filepath);
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();
 	cpu.ResetRegisters();
 	ppu.ResetRegisters();
+	apu.ResetRegisters();
 }
 
-const CartridgeInfo& GameBoy::GetCartInfo() const
+const CartridgeInfo* GameBoy::GetCartInfo() const
 {
-	return cart->GetInfo();
+	if (HasCartridge())
+	{
+		return cart->GetInfo();
+	}
+	return nullptr;
 }
 
 int GameBoy::Update()
@@ -58,6 +62,7 @@ int GameBoy::Update()
 	int cycles = cpu.Tick();
 	timer.Tick(cycles);
 	ppu.Tick(cycles);
+	apu.Tick(cycles);
 
 	return cycles;
 }
@@ -65,6 +70,11 @@ int GameBoy::Update()
 
 void GameBoy::UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboard)
 {
+	if (!HasCartridge())
+	{
+		return;
+	}
+
 	// D-pad
 	if (keyboard[SDL_SCANCODE_W].down)
 		joypad.ButtonDown(Buttons::UP);
@@ -109,17 +119,23 @@ void GameBoy::UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboar
 
 }
 
+void GameBoy::SetAudioSampleRate(float sampleRate)
+{
+	apu.SetSampleRate(sampleRate);
+}
 
 void GameBoy::SaveState()
 {
-	std::string filepath = VFS::ConvertVirtualToPhysical(cart->GetInfo().filepath);
+	if (!HasCartridge()) return;
+
+	std::string filepath = VFS::ConvertVirtualToPhysical(cart->GetInfo()->filepath);
 	std::string saveStateFilepath = VFS::GetStem(filepath) + ".state";
 	saveStateFilepath = VFS::JoinPath(VFS::GetParentPath(filepath), saveStateFilepath);
 
 	std::ofstream out(saveStateFilepath, std::ios::binary);
 
 	SaveStateHeader header;
-	header.romChecksum = cart->GetInfo().headerChecksum;
+	header.romChecksum = cart->GetInfo()->headerChecksum;
 
 	// Write components
 	GBWrite(out, header);
@@ -132,7 +148,9 @@ void GameBoy::SaveState()
 
 void GameBoy::LoadState()
 {
-	std::string filepath = VFS::ConvertVirtualToPhysical(cart->GetInfo().filepath);
+	if (!HasCartridge()) return;
+
+	std::string filepath = VFS::ConvertVirtualToPhysical(cart->GetInfo()->filepath);
 	std::string saveStateFilepath = VFS::GetStem(filepath) + ".state";
 	saveStateFilepath = VFS::JoinPath(VFS::GetParentPath(filepath), saveStateFilepath);
 
