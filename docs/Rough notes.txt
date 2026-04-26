@@ -394,7 +394,7 @@ is closer to storing the settings for the audio data, or controlling it.
   | If the write turns the channel off, retriggering is not necessary (it would do nothing).
 This means a game developer is supposed to set the state, trigger the channel, and then let it do it's thing.
 This means that we need to keep track of the internal state, like initial volume.
-BUT, WHAT THE FUCK. Referencing SameBoy, only the initial volume state is saved.
+BUT, Referencing SameBoy, only the initial volume state is saved.
 
 Actual registers and internal state for the four sound channels:
 

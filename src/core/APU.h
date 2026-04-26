@@ -37,11 +37,6 @@ struct SquareChannel
 	uint16_t shadowFrequency = 0;	// When channel triggered, period value copied here.
 	uint8_t  sweepTimer = 0;	
 	bool     sweepEnabled = false;
-
-	uint8_t GetSweep() { return NRx0; }
-
-	void Tick(); // the period in NRx3 and NRx4 is modified and written back.
-
 };
 
 struct WaveChannel

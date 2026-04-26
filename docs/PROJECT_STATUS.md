@@ -1,6 +1,6 @@
 # Game Boy Emulator - Project Status
 
-**Date:** January 2026
+**Date:** April 2026
 **Status:** Playable
 **Current Focus:** Stability & Game Compatibility
 
@@ -11,17 +11,18 @@ The emulator is currently capable of running major commercial titles including *
 - [x] **CPU:** Full LR35902 instruction set.
 - [x] **PPU:** Scanline-based rendering, Background map, Window layer, Sprites (8x8 & 8x16).
 - [x] **Interrupts:** VBlank, STAT (LY=LYC, Mode 0-2), Timer (DIV/TIMA), Joypad.
-- [x] **Timer:** Cycle-accurate DIV and TIMA implementation.
+- [x] **Audio:** Not fully accurate.
 - [x] **Input:** Keyboard mapping to Game Boy Joypad.
 
 ### Cartridge & Memory
-- [x] **MBC1:** Supports Banking Mode 0/1, RAM Banking, ROM Banking.
-- [x] **Persistence (.sav):** SRAM is automatically saved to disk (with "Dirty Flag" optimization).
+- [x] **MBC1, MBC3, MBC5:** Does not support RTC yet. MBC5 is untested.
+- [x] **Persistence (.sav):** SRAM is automatically saved to disk when closing program (when write to RAM is detected).
 - [x] **Save States (.state):** Full binary snapshot of CPU, PPU, RAM, and Registers.
 
 ### Debugging Tools
 - [x] **VRAM Viewer:** View raw tile data in memory.
 - [x] **Map Viewer:** 256x256 Render of the current Background/Window with Viewport Overlay.
+- [x] **Audio Mixer:** Toggle Specific audio channels on/off.
 - [x] **Register Viewer:** Real-time register inspection.
 
 ---
@@ -29,27 +30,22 @@ The emulator is currently capable of running major commercial titles including *
 ## 🚧 Roadmap & "To-Do" List
 *Items to tackle when returning to the project.*
 
-### 1. Audio (APU) - **High Priority**
-*Currently, the emulator is silent.*
-- **Channel 1 (Pulse):** Sweep & Envelope logic.
-- **Channel 2 (Pulse):** Basic Envelope logic.
-- **Channel 3 (Wave):** Arbitrary waveform playback (32-byte buffer).
-- **Channel 4 (Noise):** LFSR (Linear Feedback Shift Register) for percussion.
-- **Mixer:** Downsampling 512Hz signals to 44.1kHz for SDL/OpenAL.
+### 1. CGB Support
+- So many titles are locked behind CGB support. Donkey Kong country, Zelda...
 
-### 2. MBC Edge Cases
-- **MBC3 RTC:** The Real-Time Clock allows *Pokémon* to track day/night cycles. Currently stubbed. Needs to tick seconds/minutes and save/load from the `.sav` file.
-- **MBC5:** Required for later games like *Pokémon Yellow* (sometimes) or *Zelda DX*.
+### 2. MBC
+- **MBC3 RTC:** Real Time Clock not done.
+- **MBC5:** Implemented, but need to implement CGB to test.
 
 ### 3. Accuracy Improvements
 - **OAM DMA:** Currently instantaneous. Should block CPU for ~160 microseconds.
 - **Pixel FIFO:** PPU currently renders scanlines instantly. A Pixel FIFO implementation is required for precise mid-scanline effects (like the wobbling in *Prehistorik Man*).
 - **APU** - DIV-APU ticks based on raw cycles instead of depending on the div register.
 - **List of failed Blargg tests:** cgb_sound, dg_sound, interrupt_time, mem_timing, oam_bug, halt_bug.
-- **Failed Tests for Sound:** 
+- **Failed Tests for Sound: Too many to count. 01, 03, 04, 05, 07, 08, 09, 10, 11, 12** 
 
 ### 4. Editor Improvements
-- **Window viewport box visualizer:** Maybe in red.
+- **Sprite Palette Editor:** Very cool.
 - **Pause button:** Especially so we can inspect the state of the gameboy.
 
 ---

@@ -1,7 +1,5 @@
 #include "MBC.h"
 
-//TODO: MBC1 - proper ROM Banking
-
 InvalidMBC::InvalidMBC(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
 	: Cartridge(std::move(info), std::move(romData))
 {}
@@ -182,6 +180,8 @@ uint8_t MBC3::Read(Address address)
 	}
 	else if (addrExtRAM.Contains(address))
 	{
+		if (!ramEnabled) return 0xFF;
+
 		if (selectedRamBank <= 0x07)
 		{
 			uint32_t offset = (selectedRamBank * info.ramBankSize) + (address - addrExtRAM.start);
@@ -222,6 +222,8 @@ void MBC3::Write(Address address, uint8_t val)
 	}
 	else if (addrExtRAM.Contains(address))
 	{
+		if (!ramEnabled) return;
+		
 		if (selectedRamBank <= 0x07)
 		{
 			uint32_t offset = (selectedRamBank * info.ramBankSize) + (address - addrExtRAM.start);
@@ -282,6 +284,8 @@ uint8_t MBC5::Read(Address address)
 	}
 	else if (addrExtRAM.Contains(address))
 	{
+		if (!ramEnabled) return 0xFF;
+
 		uint32_t offset = (ramBank * info.ramBankSize) + (address - addrExtRAM.start);
 		return (offset < ram.size()) ? ram[offset] : 0xFF;
 	}
@@ -305,11 +309,23 @@ void MBC5::Write(Address address, uint8_t val)
 	}
 	else if (addrRomBankSelectorMSB.Contains(address))
 	{
-		romBankHigh = val;
+		romBankHigh = val & 1;
 	}
 	else if (addrRamBankSelector.Contains(address))
 	{
 		ramBank = val;
+	}
+	else if (addrExtRAM.Contains(address))
+	{
+		if (!ramEnabled) return;
+
+		uint32_t offset = (ramBank * info.ramBankSize) + (address - addrExtRAM.start);
+		if (offset < ram.size())
+		{
+			ram[offset] = val;
+
+			if (info.hasBattery) ramDirty = true;
+		}
 	}
 }
 

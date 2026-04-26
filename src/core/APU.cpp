@@ -110,30 +110,30 @@ uint8_t APU::Read(Address addr)
     }
 
 	// Square Channel 1
-	case 0xFF10: return ch1.NRx0 | 0x80;		  // Top bit unused
-	case 0xFF11: return (ch1.NRx1 & 0xC0) | 0x3F; // Only Duty (top 2 bits) readable
-	case 0xFF12: return ch1.NRx2;				  // All bits readable
-	case 0xFF13: return 0xFF;			          // Write-only register
-	case 0xFF14: return (ch1.NRx4 & 0x40) | 0xBF; // Only Length Enable (bit 6) readable
+	case addrNR10: return ch1.NRx0 | 0x80;		  // Top bit unused
+	case addrNR11: return (ch1.NRx1 & 0xC0) | 0x3F; // Only Duty (top 2 bits) readable
+	case addrNR12: return ch1.NRx2;				  // All bits readable
+	case addrNR13: return 0xFF;			          // Write-only register
+	case addrNR14: return (ch1.NRx4 & 0x40) | 0xBF; // Only Length Enable (bit 6) readable
 
     // Square Channel 2
-    case 0xFF16: return (ch2.NRx1 & 0xC0) | 0x3F;
-    case 0xFF17: return ch2.NRx2;
-    case 0xFF18: return 0xFF;
-    case 0xFF19: return (ch2.NRx4 & 0x40) | 0xBF;
+    case addrNR21: return (ch2.NRx1 & 0xC0) | 0x3F;
+    case addrNR22: return ch2.NRx2;
+    case addrNR23: return 0xFF;
+    case addrNR24: return (ch2.NRx4 & 0x40) | 0xBF;
 
     // Wave Channel 3
-    case 0xFF1A: return ch3.NR30 | 0x7F;          // Only bit 7 (DAC Power) is readable
-    case 0xFF1B: return 0xFF;                     // Write-only
-    case 0xFF1C: return ch3.NR32 | 0x9F;          // Only bits 5-6 (Volume level) are readable
-    case 0xFF1D: return 0xFF;                     // Write-only
-    case 0xFF1E: return (ch3.NR34 & 0x40) | 0xBF; // Only bit 6 (Length Enable) is readable
+    case addrNR30: return ch3.NR30 | 0x7F;          // Only bit 7 (DAC Power) is readable
+    case addrNR31: return 0xFF;                     // Write-only
+    case addrNR32: return ch3.NR32 | 0x9F;          // Only bits 5-6 (Volume level) are readable
+    case addrNR33: return 0xFF;                     // Write-only
+    case addrNR34: return (ch3.NR34 & 0x40) | 0xBF; // Only bit 6 (Length Enable) is readable
 
     // Noise Channel 4
-    case 0xFF20: return 0xFF;                     // Write Only
-    case 0xFF21: return ch4.NR42;                 // All bits readable
-    case 0xFF22: return ch4.NR43;                 // All bits readable
-    case 0xFF23: return (ch4.NR44 & 0x40) | 0xBF; // Only bit 6 read-write.
+    case addrNR41: return 0xFF;                     // Write Only
+    case addrNR42: return ch4.NR42;                 // All bits readable
+    case addrNR43: return ch4.NR43;                 // All bits readable
+    case addrNR44: return (ch4.NR44 & 0x40) | 0xBF; // Only bit 6 read-write.
 
 	default: return 0xFF;
 	}
@@ -159,7 +159,7 @@ void APU::Write(Address addr, uint8_t data)
     }
 
     // APU off makes all registers read-only except for Wave RAM
-    if ((NR52 >> 7) == 0)
+    if ((NR52 & 0x80) == 0)
     {
         return;
     }
@@ -195,41 +195,40 @@ void APU::Write(Address addr, uint8_t data)
         break;
 
     // Channel 2
-    case 0xFF15: break;
-    case 0xFF16:
+    case addrNR21:
         ch2.NRx1 = data;
         ch2.lengthCounter = 64 - (data & 0x3F);
         break;
-    case 0xFF17:
+    case addrNR22:
         ch2.NRx2 = data;
         if ((data & 0xF8) == 0) ch2.channelEnabled = false;
         break;
-    case 0xFF18:
+    case addrNR23:
         ch2.NRx3 = data;
         break;
-    case 0xFF19:
+    case addrNR24:
         ch2.NRx4 = data;
         if (data & 0x80) TriggerChannel2();
         break;
 
 
     // Channel 3
-    case 0xFF1A:
+    case addrNR30:
         ch3.NR30 = data;
         ch3.dacEnabled = (data & 0x80) != 0;
         if (!ch3.dacEnabled) ch3.channelEnabled = false; // Turning off the DAC immediately shuts off the channel
         break;
-    case 0xFF1B:
+    case addrNR31:
         ch3.NR31 = data;
         ch3.lengthCounter = 256 - data;
         break;
-    case 0xFF1C:
+    case addrNR32:
         ch3.NR32 = data;
         break;
-    case 0xFF1D:
+    case addrNR33:
         ch3.NR33 = data;
         break;
-    case 0xFF1E:
+    case addrNR34:
         ch3.NR34 = data;
         if (data & 0x80)
         {
@@ -238,18 +237,18 @@ void APU::Write(Address addr, uint8_t data)
         break;
 
     // Channel 4
-    case 0xFF20:
+    case addrNR41:
         ch4.NR41 = data;
         ch4.lengthCounter = 64 - (data & 0x3F);
         break;
-    case 0xFF21:
+    case addrNR42:
         ch4.NR42 = data;
         if ((data & 0xF8) == 0) ch4.channelEnabled = false;
         break;
-    case 0xFF22:
+    case addrNR43:
         ch4.NR43 = data;
         break;
-    case 0xFF23:
+    case addrNR44:
         ch4.NR44 = data;
         if (data & 0x80) TriggerChannel4();
         break;
@@ -818,9 +817,5 @@ LFSR bits are reset.
 */
 
 
-// There are a lot of hardware specific stuff.
-// Note that the value written to this field is not re-read by the hardware until a sweep iteration completes, or the channel is (re)triggered.
-// For accuracy, I need extra internal bools inside the channels to check for triggering.
-// 
 
 
