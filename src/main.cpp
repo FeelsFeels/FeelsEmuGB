@@ -4,28 +4,181 @@
 #include "core/Gameboy.h"
 #include "editor/Editor.h"
 #include "interface/Renderer.h"
-
-#include <glad/glad.h>
 #include <SDL.h>
 #include "imgui.h"
 #include "imgui_impl_sdl2.h"
 #include "imgui_impl_opengl3.h"
 
+#ifdef __EMSCRIPTEN__
+#include <GLES3/gl3.h>
+#include <emscripten.h>
+#else
+#include <glad/glad.h>
+#endif
+
 #include <iostream>
 
-// Screen dimensions
 const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
 
+// -----------------------------------------------------------------------------
+// All per-frame state lives here so the loop callback can access it.
+// On native this is just a convenient bundle; on web it's necessary because
+// the loop function is called from outside our stack.
+// -----------------------------------------------------------------------------
+struct AppState
+{
+    SDL_Window* window = nullptr;
+    SDL_GLContext     gl_context = nullptr;
+    SDL_AudioDeviceID audioDeviceID = 0;
 
+    GameBoy* gameboy = nullptr;
+    Renderer* renderer = nullptr;
+    Editor* editor = nullptr;
 
+    SDLInputProvider inputHandler;
+
+    GLuint gameTexture = 0;
+    bool   done = false;
+};
+
+static AppState g_app; // single global instance — fine for an emulator
+
+// -----------------------------------------------------------------------------
+// One frame of work, extracted verbatim from the old while(!done) body.
+// Called by emscripten_set_main_loop on web, or by our own while loop on native.
+// -----------------------------------------------------------------------------
+void LoopIteration()
+{
+    AppState& app = g_app;
+
+    SDL_Event event;
+    while (SDL_PollEvent(&event))
+    {
+        ImGui_ImplSDL2_ProcessEvent(&event);
+        if (event.type == SDL_QUIT)
+            app.done = true;
+        if (event.type == SDL_WINDOWEVENT &&
+            event.window.event == SDL_WINDOWEVENT_CLOSE &&
+            event.window.windowID == SDL_GetWindowID(app.window))
+            app.done = true;
+    }
+
+    ImGui_ImplOpenGL3_NewFrame();
+    ImGui_ImplSDL2_NewFrame();
+    ImGui::NewFrame();
+
+    app.editor->Render(*app.gameboy);
+
+    // --- Input ---
+    const InputState& keyboard = app.inputHandler.Poll();
+    app.gameboy->UpdateInput(app.inputHandler);
+
+    // --- GB core tick ---
+    uint64_t startTime = SDL_GetTicks64();
+
+    int cyclesThisFrame = 0;
+    while (cyclesThisFrame < GBSettings::CYCLES_PER_FRAME)
+    {
+        int cycles = app.gameboy->Update();
+        if (cycles <= 0) break;
+
+        const auto& audioBuffer = app.gameboy->GetAudioBuffer();
+        if (audioBuffer.size() >= GBSettings::DEVICE_AUDIO_BUFFER_SIZE)
+        {
+            if (GBSettings::RUNTIME_SPEED != 1.0f)
+            {
+                // Fast-forward: drop audio if queue is full
+                if (SDL_GetQueuedAudioSize(app.audioDeviceID) <= 4096 * sizeof(float) * 2)
+                    SDL_QueueAudio(app.audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
+            }
+            else
+            {
+                // Normal mode.
+                // On web we CANNOT busy-wait (SDL_Delay blocks the browser thread).
+                // Instead we just skip queuing if the buffer is already full.
+                // The browser's audio scheduler will catch up on its own.
+#ifndef __EMSCRIPTEN__
+                while (SDL_GetQueuedAudioSize(app.audioDeviceID) > 4096 * sizeof(float) * 2)
+                    SDL_Delay(1);
+#endif
+                if (SDL_GetQueuedAudioSize(app.audioDeviceID) <= 4096 * sizeof(float) * 2)
+                    SDL_QueueAudio(app.audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
+            }
+
+            app.gameboy->ClearAudioBuffer();
+        }
+
+        cyclesThisFrame += cycles;
+    }
+
+    app.renderer->UpdateTexture(app.gameTexture, 160, 144, app.gameboy->GetScreenBuffer().data());
+
+    // --- Savestate shortcuts ---
+    if (keyboard[SDL_SCANCODE_LSHIFT].down && keyboard[SDL_SCANCODE_O].pressed)
+        app.gameboy->SaveState();
+    if (keyboard[SDL_SCANCODE_LSHIFT].down && keyboard[SDL_SCANCODE_P].pressed)
+        app.gameboy->LoadState();
+
+    // --- ImGui game viewport ---
+    static float aspectRatio = 160.f / 144.f;
+    ImGui::Begin("Game Viewport");
+    {
+        ImVec2 region = ImGui::GetContentRegionAvail();
+        float targetH = region.x / aspectRatio;
+        ImGui::Image((void*)(intptr_t)app.gameTexture, ImVec2(region.x, targetH));
+    }
+    ImGui::End();
+    ImGui::Render();
+
+    // --- Render ---
+    ImGuiIO& io = ImGui::GetIO();
+    glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
+    glClearColor(0.45f, 0.55f, 0.60f, 1.00f);
+    glClear(GL_COLOR_BUFFER_BIT);
+    ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+    SDL_GL_SwapWindow(app.window);
+
+    // --- Frame limiter (native only) ---
+    // On web the browser's requestAnimationFrame already caps us at ~60fps.
+#ifndef __EMSCRIPTEN__
+    if (GBSettings::RUNTIME_SPEED > 0.0f)
+    {
+        uint64_t endTime = SDL_GetTicks64();
+        uint64_t frameTime = endTime - startTime;
+        float targetTime = GBSettings::TARGET_FRAME_TIME / GBSettings::RUNTIME_SPEED;
+        if (frameTime < targetTime)
+            SDL_Delay(static_cast<uint32_t>(targetTime - frameTime));
+    }
+#endif
+}
+
+// -----------------------------------------------------------------------------
+// Emscripten requires a plain function pointer (no captures) for the loop.
+// This trampoline satisfies that while letting LoopIteration() be a normal fn.
+// -----------------------------------------------------------------------------
+#ifdef __EMSCRIPTEN__
+static void EmscriptenLoopCallback()
+{
+    LoopIteration();
+
+    // Emscripten doesn't have a "stop the loop" signal — we cancel it by
+    // throwing a JS exception via emscripten_cancel_main_loop() when done.
+    if (g_app.done)
+        emscripten_cancel_main_loop();
+}
+#endif
+
+// -----------------------------------------------------------------------------
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
     _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
 #endif
 
+#ifndef __EMSCRIPTEN__
     VFS::MountDirectory("", Filepaths::roms);
+#endif
 
 #ifdef GAMEBOY_DOCTOR
 #ifdef _MSC_VER
@@ -36,203 +189,112 @@ int main(int argc, char* argv[])
 #endif
 #endif
 
-#pragma region Setup
+    // -------------------------------------------------------------------------
+    // SDL + GL setup
+    // -------------------------------------------------------------------------
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0)
     {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
 
+    // Desktop uses OpenGL 4.6 core. Web uses OpenGL ES 3.0 (WebGL2).
+#ifdef __EMSCRIPTEN__
+    const char* glsl_version = "#version 300 es";
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+    SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 0);
+#else
     const char* glsl_version = "#version 460";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 4);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 6);
+#endif
 
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
 
-    // Create Window with OpenGL flag
     SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("Gameboy Emulator", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
+    g_app.window = SDL_CreateWindow("Gameboy Emulator",
+        SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+        SCREEN_WIDTH, SCREEN_HEIGHT, window_flags);
 
-    // Create OpenGL Context
-    SDL_GLContext gl_context = SDL_GL_CreateContext(window);
-    SDL_GL_MakeCurrent(window, gl_context);
-    SDL_GL_SetSwapInterval(1); // Enable V-Sync
-
-    SDL_GetTicks64(); // Initialize timer
+    g_app.gl_context = SDL_GL_CreateContext(g_app.window);
+    SDL_GL_MakeCurrent(g_app.window, g_app.gl_context);
+    SDL_GL_SetSwapInterval(1);
 
     SDL_Init(SDL_INIT_AUDIO);
     SDL_AudioSpec desiredSpec = {};
     desiredSpec.freq = 44100;
-    desiredSpec.format = AUDIO_F32; // 32-bit floats
-    desiredSpec.channels = 2;       // Stereo
-    desiredSpec.samples = 2048;     // Buffer size
-    desiredSpec.callback = nullptr; // Manually push data
-    SDL_AudioDeviceID audioDeviceID = SDL_OpenAudioDevice(nullptr, 0, &desiredSpec, nullptr, 0);
-    // Unpause the device to let it start playing
-    SDL_PauseAudioDevice(audioDeviceID, 0);
+    desiredSpec.format = AUDIO_F32;
+    desiredSpec.channels = 2;
+    desiredSpec.samples = 2048;
+    desiredSpec.callback = nullptr;
+    g_app.audioDeviceID = SDL_OpenAudioDevice(nullptr, 0, &desiredSpec, nullptr, 0);
+    SDL_PauseAudioDevice(g_app.audioDeviceID, 0);
 
-
-    // Load OpenGL pointers
+#ifndef __EMSCRIPTEN__
     if (!gladLoadGLLoader((GLADloadproc)SDL_GL_GetProcAddress))
     {
         std::cerr << "Failed to initialize GLAD" << std::endl;
         return -1;
     }
+#endif
 
-    // Setup ImGui Context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
-    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
-    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;         // Enable Docking (Optional)
-
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
     ImGui::StyleColorsDark();
-
-    // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+    ImGui_ImplSDL2_InitForOpenGL(g_app.window, g_app.gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
-#pragma endregion
 
-    GameBoy* gameboy = new GameBoy();
-    gameboy->SetAudioSampleRate(static_cast<float>(GBHardWare::MASTER_CLOCK) / static_cast<float>(GBSettings::DEVICE_AUDIO_OUTPUT_RATE));
-    //gameboy->InsertCartridge("blargg_test_roms/cpu_instrs/individual/01-special.gb");
+    // -------------------------------------------------------------------------
+    // App objects
+    // -------------------------------------------------------------------------
+    g_app.gameboy = new GameBoy();
+    g_app.gameboy->SetAudioSampleRate(
+        static_cast<float>(GBHardWare::MASTER_CLOCK) /
+        static_cast<float>(GBSettings::DEVICE_AUDIO_OUTPUT_RATE));
 
-    Renderer renderer;
-    renderer.Init();
-    GLuint gameTexture = renderer.CreateTexture(160, 144);
+    g_app.renderer = new Renderer();
+    g_app.renderer->Init();
+    g_app.gameTexture = g_app.renderer->CreateTexture(160, 144);
 
-    Editor editor;
-    editor.Init(&renderer);
+    g_app.editor = new Editor();
+    g_app.editor->Init(g_app.renderer);
 
-    // Keyboard input
-    SDLInputProvider inputHandler;
+    // -------------------------------------------------------------------------
+    // Main loop
+    // -------------------------------------------------------------------------
+#ifdef __EMSCRIPTEN__
+    // 0 = use requestAnimationFrame (~60fps), 1 = simulate infinite loop
+    // We pass 0 for fps (let the browser decide) and 1 for simulate_infinite_loop
+    // so that main() blocks here and doesn't fall through to cleanup code,
+    // which would destroy everything before the first frame runs.
+    emscripten_set_main_loop(EmscriptenLoopCallback, 0, 1);
+#else
+    while (!g_app.done)
+        LoopIteration();
+#endif
 
-    bool done = false;
-    while (!done)
-    {
-        uint64_t startTime = SDL_GetTicks64(); // Start of frame
+    // -------------------------------------------------------------------------
+    // Cleanup (native only — on web the page is just closed)
+    // -------------------------------------------------------------------------
+    delete g_app.gameboy;
+    delete g_app.renderer;
+    delete g_app.editor;
 
-        SDL_Event event;
-        while (SDL_PollEvent(&event))
-        {
-            ImGui_ImplSDL2_ProcessEvent(&event);
-            if (event.type == SDL_QUIT)
-                done = true;
-            if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
-                done = true;
-        }
-     
-        ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
-        ImGui::NewFrame();
-
-        editor.Render(*gameboy);
-
-        // GAMEBOY LOOP HERE
-        // Run CPU for 1 frame
-        // Update Texture with PPU pixels
-        const InputState& keyboard = inputHandler.Poll();
-        gameboy->UpdateInput(inputHandler);
-
-        int cyclesThisFrame = 0;
-        while (cyclesThisFrame < GBSettings::CYCLES_PER_FRAME)
-        {
-            int cycles = gameboy->Update();
-            if (cycles <= 0) break;
-
-            const auto& audioBuffer = gameboy->GetAudioBuffer();
-            if (audioBuffer.size() >= GBSettings::DEVICE_AUDIO_BUFFER_SIZE)
-            {
-                if (GBSettings::RUNTIME_SPEED != 1.0f)
-                {
-                    // FAST FORWARD MODE
-                    // If the audio queue has space, queue it.
-                    // If queue is full, don't do anything. Drop audio.
-                    if (SDL_GetQueuedAudioSize(audioDeviceID) <= 4096 * sizeof(float) * 2)
-                    {
-                        SDL_QueueAudio(audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
-                    }
-                }
-                else
-                {
-                    // NORMAL MODE
-                    // Strict Audio Syncing
-                    while (SDL_GetQueuedAudioSize(audioDeviceID) > 4096 * sizeof(float) * 2)
-                    {
-                        SDL_Delay(1);
-                    }
-                    SDL_QueueAudio(audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
-                }
-
-                gameboy->ClearAudioBuffer();
-            }
-
-            cyclesThisFrame += cycles;
-        }
-        renderer.UpdateTexture(gameTexture, 160, 144, gameboy->GetScreenBuffer().data());
-
-
-        // Savestates shortcuts
-        if (keyboard[SDL_SCANCODE_LSHIFT].down&& keyboard[SDL_SCANCODE_O].pressed)
-        {
-            gameboy->SaveState();
-        }
-        if (keyboard[SDL_SCANCODE_LSHIFT].down && keyboard[SDL_SCANCODE_P].pressed)
-        {
-            gameboy->LoadState();
-        }
-
-        // Show game in ImGui Window
-        static float aspectRatio = 160.f / 144.f;
-        ImGui::Begin("Game Viewport");
-        {
-            ImVec2 region = ImGui::GetContentRegionAvail();
-            float targetH = region.x / aspectRatio;
-            
-            ImGui::Image((void*)(intptr_t)gameTexture, ImVec2(region.x, targetH));
-        }
-        ImGui::End();
-        ImGui::Render();
-
-
-
-        // Rendering
-        glViewport(0, 0, (int)io.DisplaySize.x, (int)io.DisplaySize.y);
-        glClearColor(0.45f, 0.55f, 0.60f, 1.00f); // Clear background
-        glClear(GL_COLOR_BUFFER_BIT);
-
-        // Draw ImGui Data
-        ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
-
-        // Swap buffers
-        SDL_GL_SwapWindow(window);
-
-        // Limit Speed 
-        if (GBSettings::RUNTIME_SPEED > 0.0f)
-        {
-            uint64_t endTime = SDL_GetTicks64();
-            uint64_t frameTime = endTime - startTime;
-            float targetTime = GBSettings::TARGET_FRAME_TIME / GBSettings::RUNTIME_SPEED;
-            if (frameTime < targetTime)
-            {
-                SDL_Delay(static_cast<uint32_t>(targetTime - frameTime));
-            }
-        }
-    }
-
-    delete gameboy;
-
-    // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplSDL2_Shutdown();
     ImGui::DestroyContext();
 
-    SDL_GL_DeleteContext(gl_context);
-    SDL_DestroyWindow(window);
+    SDL_GL_DeleteContext(g_app.gl_context);
+    SDL_DestroyWindow(g_app.window);
     SDL_Quit();
 
     return 0;
