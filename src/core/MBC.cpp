@@ -94,6 +94,7 @@ uint8_t MBC1::Read(Address address)
 		return (offset < ram.size()) ? ram[offset] : 0xFF;
 	}
 
+	return 0xFF;
 }
 
 void MBC1::Write(Address address, uint8_t val)

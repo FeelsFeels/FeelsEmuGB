@@ -18,6 +18,7 @@ const int SCREEN_WIDTH = 1280;
 const int SCREEN_HEIGHT = 720;
 
 
+
 int main(int argc, char* argv[])
 {
 #ifdef _DEBUG
@@ -108,20 +109,13 @@ int main(int argc, char* argv[])
     editor.Init(&renderer);
 
     // Keyboard input
-    std::unordered_map<SDL_Scancode, ButtonState> keyboard;
-
+    SDLInputProvider inputHandler;
 
     bool done = false;
     while (!done)
     {
         uint64_t startTime = SDL_GetTicks64(); // Start of frame
 
-        // Poll Keyboard input
-        for (auto& [key, state] : keyboard)
-        {
-            state.pressed = false;
-            state.released = false;
-        }
         SDL_Event event;
         while (SDL_PollEvent(&event))
         {
@@ -130,21 +124,8 @@ int main(int argc, char* argv[])
                 done = true;
             if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE && event.window.windowID == SDL_GetWindowID(window))
                 done = true;
-
-            if (event.type == SDL_KEYDOWN && !event.key.repeat)
-            {
-                auto& key = keyboard[event.key.keysym.scancode];
-                key.down = true;
-                key.pressed = true;
-            }
-            if (event.type == SDL_KEYUP)
-            {
-                auto& key = keyboard[event.key.keysym.scancode];
-                key.down = false;
-                key.released = true;
-            }
         }
-
+     
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame();
         ImGui::NewFrame();
@@ -154,7 +135,8 @@ int main(int argc, char* argv[])
         // GAMEBOY LOOP HERE
         // Run CPU for 1 frame
         // Update Texture with PPU pixels
-        gameboy->UpdateInput(keyboard);
+        const InputState& keyboard = inputHandler.Poll();
+        gameboy->UpdateInput(inputHandler);
 
         int cyclesThisFrame = 0;
         while (cyclesThisFrame < GBSettings::CYCLES_PER_FRAME)
@@ -194,7 +176,8 @@ int main(int argc, char* argv[])
         renderer.UpdateTexture(gameTexture, 160, 144, gameboy->GetScreenBuffer().data());
 
 
-        if (keyboard[SDL_SCANCODE_LSHIFT].down && keyboard[SDL_SCANCODE_O].pressed)
+        // Savestates shortcuts
+        if (keyboard[SDL_SCANCODE_LSHIFT].down&& keyboard[SDL_SCANCODE_O].pressed)
         {
             gameboy->SaveState();
         }

@@ -1,10 +1,25 @@
 #include "Cartridge.h"
 #include "MBC.h"
 
-Cartridge::Cartridge(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
-	: info {std::move(info)}, rom {std::move(romData)}
+Cartridge::Cartridge(CartridgeInfo&& cartInfo, std::vector<uint8_t>&& romData)
+	: info {std::move(cartInfo)}, rom {std::move(romData)}, ram(info.ramSizeBytes)
+{}
+
+Cartridge::~Cartridge()
+{}
+
+void Cartridge::LoadRAM(std::vector<uint8_t>&& ramData)
 {
-	ram.resize(this->info.ramSizeBytes);
+	ASSERT(ramData.size() * sizeof(uint8_t) == info.ramSizeBytes);
+	ramData.resize(info.ramSizeBytes);
+
+	ram = std::move(ramData);
+}
+
+// Supply a filepath to where the ROM is held. This also serves as the place we save the ram to.
+// Intended to be used on the desktop build.
+void Cartridge::LoadRAMFromFilepath(const std::string& filepath)
+{
 	if (this->info.hasBattery)
 	{
 		// Find .sav file where the info->filepath is located
@@ -15,22 +30,13 @@ Cartridge::Cartridge(CartridgeInfo&& info, std::vector<uint8_t>&& romData)
 			std::cout << "Save file found: " << saveFilepath << "\n";
 			VFS::ReadFile(saveFilepath, ram);
 		}
+		// Sanity check
+		ASSERT(ram.size() * sizeof(uint8_t) == info.ramSizeBytes);
+
 		this->info.saveFilepath = saveFilepath;
 	}
 }
 
-Cartridge::~Cartridge()
-{
-	if (info.hasBattery && ramDirty)
-	{
-		DumpRAMToFile();
-	}
-}
-
-void Cartridge::LoadRAM(std::vector<uint8_t> ramData)
-{
-	ram = ramData;
-}
 
 std::unique_ptr<Cartridge> Cartridge::CreateCartridge(std::vector<uint8_t>&& romData, std::string filepath)
 {
@@ -75,7 +81,6 @@ std::unique_ptr<Cartridge> Cartridge::CreateCartridge(std::vector<uint8_t>&& rom
 		return std::make_unique<InvalidMBC>(std::move(cartInfo), std::move(romData));
 		break;
 	}
-
 }
 
 CartridgeInfo Cartridge::ParseCartridgeHeader(const std::vector<uint8_t>& romData)

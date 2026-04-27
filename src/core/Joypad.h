@@ -1,19 +1,9 @@
+#pragma once
+
 #include <cstdint>
+#include "../interface/Input.h"
 
-// SDL interface
-struct ButtonState
-{
-	bool down = false;
-	bool pressed = false;
-	bool released = false;
-};
 
-enum class Buttons : uint8_t
-{
-	A,B,
-	UP, DOWN, LEFT, RIGHT,
-	START, SELECT
-};
 
 class Joypad
 {

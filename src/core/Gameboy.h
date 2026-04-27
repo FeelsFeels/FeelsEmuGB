@@ -16,6 +16,9 @@ public:
 	~GameBoy();
 
 	void InsertCartridge(std::string filepath);
+	void InsertCartridge(std::vector<uint8_t>&& romData);
+	void OpenSaveFile(std::vector<uint8_t>&& ramData);
+
 	bool HasCartridge() const { return cart != nullptr; }
 
 	const CartridgeInfo* GetCartInfo() const;
@@ -27,7 +30,7 @@ public:
 	void SaveState();
 	void LoadState();
 
-	void UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboard);
+	void UpdateInput(IInputProvider& input);
 
 	void SetAudioSampleRate(float sampleRate);
 	std::vector<float>& GetAudioBuffer() { return apu.GetAudioBuffer(); }
@@ -35,6 +38,9 @@ public:
 
 	void GetChannelVolumes(float& ch1, float& ch2, float& ch3, float& ch4);
 private:
+
+	void SaveGame();
+
 	friend class DebugInfo;
 	friend class VRAMBrowser;
 	friend class TileMapBrowser;

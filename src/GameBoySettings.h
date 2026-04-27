@@ -1,3 +1,4 @@
+#include "core/Joypad.h"
 
 struct GBSettings
 {
@@ -12,6 +13,8 @@ struct GBSettings
     static bool ENABLE_AUDIO_CHANNEL_2;
     static bool ENABLE_AUDIO_CHANNEL_3;
     static bool ENABLE_AUDIO_CHANNEL_4;
+
+    static std::unordered_map<Buttons, int> KEY_MAPPING;
 };
 
 struct GBHardWare

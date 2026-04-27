@@ -1,4 +1,5 @@
 #include "Gameboy.h"
+#include "../GameBoySettings.h"
 
 GameBoy::GameBoy()
 {
@@ -18,10 +19,15 @@ GameBoy::GameBoy()
 }
 
 GameBoy::~GameBoy()
-{}
+{
+	SaveGame();
+}
 
 void GameBoy::InsertCartridge(std::string filepath)
 {
+	// We save the game's ram first if we already have a game loaded
+	SaveGame();
+
 	// Clear previous info first
 	bus.RemoveCartridge();
 	cart.reset();
@@ -36,11 +42,38 @@ void GameBoy::InsertCartridge(std::string filepath)
 	
 	pathToCartridge = filepath;
 	cart = Cartridge::CreateCartridge(std::move(romData), filepath);
+	cart->LoadRAMFromFilepath(filepath);
+
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();
 	cpu.ResetRegisters();
 	ppu.ResetRegisters();
 	apu.ResetRegisters();
+}
+
+// This one is thinking ahead to if I want to deploy on web.
+// Not sure what filesystem the web uses, but read into vectors and create the cart from there.
+void GameBoy::InsertCartridge(std::vector<uint8_t>&& romData)
+{
+	bus.RemoveCartridge();
+	cart.reset();
+	pathToCartridge.clear();
+
+	cart = Cartridge::CreateCartridge(std::move(romData));
+
+	bus.AttachCartridge(cart.get());
+	bus.RunBootRom();
+	cpu.ResetRegisters();
+	ppu.ResetRegisters();
+	apu.ResetRegisters();
+}
+
+void GameBoy::OpenSaveFile(std::vector<uint8_t>&& ramData)
+{
+	if (!cart)
+		return;
+
+	cart->LoadRAM(std::forward<std::vector<uint8_t>>(ramData));
 }
 
 const CartridgeInfo* GameBoy::GetCartInfo() const
@@ -68,51 +101,53 @@ int GameBoy::Update()
 }
 
 
-void GameBoy::UpdateInput(std::unordered_map<SDL_Scancode, ButtonState>& keyboard)
+void GameBoy::UpdateInput(IInputProvider& input)
 {
 	if (!HasCartridge())
 	{
 		return;
 	}
 
+	const GameInput& inputState = input.GetGameInput();
+
 	// D-pad
-	if (keyboard[SDL_SCANCODE_W].down)
+	if (inputState[static_cast<size_t>(Buttons::UP)].down)
 		joypad.ButtonDown(Buttons::UP);
 	else
 		joypad.ButtonUp(Buttons::UP);
 
-	if (keyboard[SDL_SCANCODE_S].down)
+	if (inputState[static_cast<size_t>(Buttons::DOWN)].down)
 		joypad.ButtonDown(Buttons::DOWN);
 	else
 		joypad.ButtonUp(Buttons::DOWN);
 
-	if (keyboard[SDL_SCANCODE_A].down)
+	if (inputState[static_cast<size_t>(Buttons::LEFT)].down)
 		joypad.ButtonDown(Buttons::LEFT);
 	else
 		joypad.ButtonUp(Buttons::LEFT);
 
-	if (keyboard[SDL_SCANCODE_D].down)
+	if (inputState[static_cast<size_t>(Buttons::RIGHT)].down)
 		joypad.ButtonDown(Buttons::RIGHT);
 	else
 		joypad.ButtonUp(Buttons::RIGHT);
 
 	//Buttons
-	if (keyboard[SDL_SCANCODE_J].down)
+	if (inputState[static_cast<size_t>(Buttons::B)].down)
 		joypad.ButtonDown(Buttons::B);
 	else
 		joypad.ButtonUp(Buttons::B);
 
-	if (keyboard[SDL_SCANCODE_K].down)
+	if (inputState[static_cast<size_t>(Buttons::A)].down)
 		joypad.ButtonDown(Buttons::A);
 	else
 		joypad.ButtonUp(Buttons::A);
 
-	if (keyboard[SDL_SCANCODE_Z].down)
+	if (inputState[static_cast<size_t>(Buttons::SELECT)].down)
 		joypad.ButtonDown(Buttons::SELECT);
 	else
 		joypad.ButtonUp(Buttons::SELECT);
 
-	if (keyboard[SDL_SCANCODE_X].down)
+	if (inputState[static_cast<size_t>(Buttons::START)].down)
 		joypad.ButtonDown(Buttons::START);
 	else
 		joypad.ButtonUp(Buttons::START);
@@ -127,6 +162,19 @@ void GameBoy::SetAudioSampleRate(float sampleRate)
 void GameBoy::GetChannelVolumes(float& ch1, float& ch2, float& ch3, float& ch4)
 {
 	apu.GetChannelVolumes(ch1, ch2, ch3, ch4);
+}
+
+void GameBoy::SaveGame()
+{
+	if (cart)
+	{
+		auto info = cart->GetInfo();
+		if (info->hasBattery && cart->IsRAMDirty())
+		{
+			cart->DumpRAMToFile();
+			// Or whatever my web saving method is
+		}
+	}
 }
 
 void GameBoy::SaveState()
