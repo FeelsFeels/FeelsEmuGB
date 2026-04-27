@@ -26,13 +26,18 @@ public:
 
 	void AttachBus(Bus* p) { bus = p; }
 
-	const auto& GetVRAM() { return vram; }
+	const std::array<uint8_t, 8192>& GetVRAM() { return vram; }
 
 	const std::array <uint32_t, 25700>& GetScreenBuffer() { return screenBuffer; }
 
 
 	void SaveState(std::ofstream& out);
 	void LoadState(std::ifstream& in);
+
+	// Editor
+	bool GetLCDC() const { return lcdc; }
+	bool GetSCY() const { return scy; }
+	bool GetSCX() const { return scx; }
 
 private:
 	void RenderScanlineToBuffer();

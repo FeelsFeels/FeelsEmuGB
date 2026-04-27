@@ -12,7 +12,7 @@ void VRAMBrowser::Init(Renderer* p)
 
 void VRAMBrowser::UpdateBuffer(GameBoy& gb)
 {
-    const auto& vram = gb.ppu.GetVRAM();
+    const auto& vram = gb.GetVRAM();
 
     // Loop through all 384 Tiles
     for (int tileIndex = 0; tileIndex < 384; tileIndex++)
@@ -135,7 +135,7 @@ void TileMapBrowser::Init(Renderer* p)
 
 void TileMapBrowser::UpdateBuffer(GameBoy& gb)
 {
-    const auto& vram = gb.ppu.GetVRAM();
+    const auto& vram = gb.GetVRAM();
 
     uint16_t mapBase = showTilemap2 ? 0x9C00 : 0x9800;
 
@@ -147,7 +147,7 @@ void TileMapBrowser::UpdateBuffer(GameBoy& gb)
             uint8_t tileIndex = vram[addrVRAM.GetOffset(mapAddr)];
 
             // Get the Tile Data Address
-            bool signedMode = !(gb.ppu.Read(0xFF40) & 0x10);
+            bool signedMode = !(gb.GetLCDC() & 0x10);
             Address tileDataAddr;
 
             // Controls which section of tile data is being read from
@@ -214,8 +214,8 @@ void TileMapBrowser::Draw(GameBoy& gb, ImGuiIO& io)
         if (drawViewportBox)
         {
             // Viewport position
-            uint8_t scy = gb.ppu.Read(0xFF42);
-            uint8_t scx = gb.ppu.Read(0xFF43);
+            uint8_t scy = gb.GetSCY();
+            uint8_t scx = gb.GetSCX();
 
             // Setup Dimensions
             // We need the screen position of the image we just drew to calculate offsets
@@ -422,12 +422,13 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
 
     if (ImGui::Begin("CPU Info", &isVisible) && gb.HasCartridge())
     {
-        const Registers& r = gb.cpu.reg;
+        const auto& cpu = gb.GetCPU();
+        const Registers& r = cpu.GetRegisters();
 
         // --- Program state ---
         ImGui::Text("PC: %04X", r.pc);
         ImGui::Text("SP: %04X", r.sp);
-        ImGui::Text("Last OP: %02X", static_cast<int>(gb.cpu.lastInstruction));
+        //ImGui::Text("Last OP: %02X", static_cast<int>(gb.cpu.lastInstruction));
 
         ImGui::Separator();
 
@@ -467,12 +468,12 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
         ImGui::Separator();
 
         // --- Interrupts ---
-        ImGui::Text("IME: %s", gb.cpu.ime ? "ENABLED" : "DISABLED");
+        ImGui::Text("IME: %s", cpu.GetIME() ? "ENABLED" : "DISABLED");
 
         ImGui::Separator();
 
-        const uint8_t IF = gb.cpu.GetIF();
-        const uint8_t IE = gb.cpu.GetIE();
+        const uint8_t IF = cpu.GetIF();
+        const uint8_t IE = cpu.GetIE();
 
         ImGui::Text("Interrupt Registers");
         ImGui::Text("IF (FF0F): %02X", IF);

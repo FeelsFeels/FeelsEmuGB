@@ -20,17 +20,19 @@ public:
 
 	void RequestInterrupt(InterruptCode bit);
 
-	uint8_t GetIF()			{ return interruptFlag; }
-	uint8_t GetIE()			{ return interruptFlagEnabled ;}
+	uint8_t GetIF() const   { return interruptFlag; }
+	uint8_t GetIE() const   { return interruptFlagEnabled ;}
 	void SetIF(uint8_t val) { interruptFlag = val; }
 	void SetIE(uint8_t val) { interruptFlagEnabled = val; }
 
-
 	void SaveState(std::ofstream& out);
 	void LoadState(std::ifstream& in);
+
+	//Editor 
+	const Registers& GetRegisters() const { return reg; }
+	bool GetIME() const { return ime; }
+
 private:
-	
-	friend class DebugInfo;
 
 	struct Instruction
 	{
@@ -50,7 +52,7 @@ private:
 
 	int totalCyclesForInstruction; // Computing the final cycles taken by each operation
 
-	uint8_t lastInstruction;	// just for debug information draw purposes;
+	//uint8_t lastInstruction;	// just for debug information draw purposes;
 
 	Bus* bus;
 	Registers reg;

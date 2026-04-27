@@ -74,7 +74,7 @@ int CPU::Tick()
     (this->*instructions[opcode].execute)();
     totalCyclesForInstruction += instructions[opcode].cycles;   //CB instruction increments inside OP_CB()
 
-    lastInstruction = opcode;
+    //lastInstruction = opcode;
 
     static int instruction_count = 0;
     return totalCyclesForInstruction;
