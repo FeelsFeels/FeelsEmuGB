@@ -34,9 +34,9 @@ public:
 	//uint8_t EditorBusRead(Address addr) { return bus.Read(addr); }
 	const std::array <uint32_t, 25700>& GetScreenBuffer() { return ppu.GetScreenBuffer(); }
 	const std::array<uint8_t, 8192>& GetVRAM() { return ppu.GetVRAM(); }
-	bool GetLCDC() { return ppu.GetLCDC(); }
-	bool GetSCY() { return ppu.GetSCY(); }
-	bool GetSCX() { return ppu.GetSCX(); }
+	uint8_t GetLCDC() { return ppu.GetLCDC(); }
+	uint8_t GetSCY() { return ppu.GetSCY(); }
+	uint8_t GetSCX() { return ppu.GetSCX(); }
 
 	void GetChannelVolumes(float& ch1, float& ch2, float& ch3, float& ch4);
 

@@ -35,9 +35,9 @@ public:
 	void LoadState(std::ifstream& in);
 
 	// Editor
-	bool GetLCDC() const { return lcdc; }
-	bool GetSCY() const { return scy; }
-	bool GetSCX() const { return scx; }
+	uint8_t GetLCDC() const { return lcdc; }
+	uint8_t GetSCY() const { return scy; }
+	uint8_t GetSCX() const { return scx; }
 
 private:
 	void RenderScanlineToBuffer();
