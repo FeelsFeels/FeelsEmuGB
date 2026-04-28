@@ -40,8 +40,8 @@ class SDLInputProvider : public IInputProvider
 {
 public:
     const InputState& Poll() override;
-    const InputState& GetInputState() const;
-	GameInput GetGameInput();
+    const InputState& GetInputState() const override;
+	GameInput GetGameInput() override;
 
 private:
     InputState inputState{};

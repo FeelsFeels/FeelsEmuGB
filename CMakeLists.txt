@@ -114,7 +114,17 @@ if(EMSCRIPTEN)
     # EXPORTED_RUNTIME_METHODS - Expose FS to JS for syncfs() save calls
     # -lidbfs.js             - IndexedDB FS backend for persistent saves
     set_target_properties(${PROJECT_NAME} PROPERTIES LINK_FLAGS
-        "-s USE_SDL=2 -s USE_WEBGL2=1 -s FULL_ES3=1 -s MIN_WEBGL_VERSION=2 -s MAX_WEBGL_VERSION=2 -s ALLOW_MEMORY_GROWTH=1 -s FORCE_FILESYSTEM=1 -s EXPORTED_RUNTIME_METHODS=['FS','ccall','cwrap'] -lidbfs.js -sASSERTIONS=1"
+        "-s USE_SDL=2 \
+         -s USE_WEBGL2=1 \
+         -s FULL_ES3=1 \
+         -s MIN_WEBGL_VERSION=2 \
+         -s MAX_WEBGL_VERSION=2 \
+         -s ALLOW_MEMORY_GROWTH=1 \
+         -s FORCE_FILESYSTEM=1 \
+         -s EXPORTED_RUNTIME_METHODS=['FS','ccall','cwrap','lengthBytesUTF8','stringToUTF8','HEAPU8'] \
+         -s EXPORTED_FUNCTIONS=['_malloc','_free','_main'] \
+         -lidbfs.js \
+         -s ASSERTIONS=1"
     )
 
     target_link_libraries(${PROJECT_NAME} PRIVATE imgui)

@@ -8,7 +8,7 @@ class Cartridge
 {
 public:
 	Cartridge(CartridgeInfo&& info, std::vector<uint8_t>&& romData);
-	~Cartridge();
+	virtual ~Cartridge();
 
 	// Core
 	virtual uint8_t Read(Address address) = 0;

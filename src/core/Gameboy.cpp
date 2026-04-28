@@ -41,7 +41,7 @@ void GameBoy::InsertCartridge(std::string filepath)
 	}
 	
 	pathToCartridge = filepath;
-	cart = Cartridge::CreateCartridge(std::move(romData), filepath);
+	cart = std::move(Cartridge::CreateCartridge(std::move(romData), filepath));
 	cart->LoadRAMFromFilepath(filepath);
 
 	bus.AttachCartridge(cart.get());
@@ -59,7 +59,7 @@ void GameBoy::InsertCartridge(std::vector<uint8_t>&& romData)
 	cart.reset();
 	pathToCartridge.clear();
 
-	cart = Cartridge::CreateCartridge(std::move(romData));
+	cart = std::move(Cartridge::CreateCartridge(std::move(romData)));
 
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();

@@ -12,6 +12,8 @@
 #ifdef __EMSCRIPTEN__
 #include <GLES3/gl3.h>
 #include <emscripten.h>
+#include "interface/WebBridge.h"
+#include "interface/WebFileOpener.h"
 #else
 #include <glad/glad.h>
 #endif
@@ -276,6 +278,9 @@ int main(int argc, char* argv[])
     // We pass 0 for fps (let the browser decide) and 1 for simulate_infinite_loop
     // so that main() blocks here and doesn't fall through to cleanup code,
     // which would destroy everything before the first frame runs.
+    WebBridge::SetRomLoadedCallback([](std::vector<uint8_t> romData) {
+        g_app.gameboy->InsertCartridge(std::move(romData));
+    });
     emscripten_set_main_loop(EmscriptenLoopCallback, 0, 1);
 #else
     while (!g_app.done)

@@ -2,6 +2,9 @@
 #include "../utils/VFS/VFS.h"
 #include "../GameBoySettings.h"
 
+#ifdef __EMSCRIPTEN__
+#include "../interface/WebBridge.h"
+#endif
 
 void VRAMBrowser::Init(Renderer* p)
 {
@@ -660,13 +663,18 @@ void Editor::Render(GameBoy& gb)
 		{
 			if (ImGui::MenuItem("Open ROM..."))
 			{
-				romBrowser.isVisible = true;
+#ifdef __EMSCRIPTEN__
+                WebBridge::OpenRomFilePicker();
+#else
+                romBrowser.isVisible = true;
+#endif
 			}
 			ImGui::EndMenu();
 		}
 
         if (ImGui::BeginMenu("View"))
         {
+            ImGui::MenuItem("ROM Browser", nullptr, &romBrowser.isVisible);
             ImGui::MenuItem("Debug Info", nullptr, &debugInfo.isVisible);
             ImGui::MenuItem("Cartridge Info", nullptr, &cartInfo.isVisible);
             ImGui::MenuItem("Control Panel", nullptr, &controlPanel.isVisible);
