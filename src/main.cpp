@@ -14,6 +14,7 @@
 #include <emscripten.h>
 #include "interface/WebBridge.h"
 #include "interface/WebFileOpener.h"
+#include "editor/WebImGuiDefaultLayout.h"
 #else
 #include <glad/glad.h>
 #endif
@@ -44,15 +45,32 @@ struct AppState
     bool   done = false;
 };
 
-static AppState g_app; // single global instance — fine for an emulator
+static AppState g_app; // single global instance
 
 // -----------------------------------------------------------------------------
-// One frame of work, extracted verbatim from the old while(!done) body.
-// Called by emscripten_set_main_loop on web, or by our own while loop on native.
+// One frame of work.
+// Called by emscripten_set_main_loop on web.
 // -----------------------------------------------------------------------------
 void LoopIteration()
 {
     AppState& app = g_app;
+
+#ifdef __EMSCRIPTEN__
+    // Save delta time for the web, so we know how many cycles are supposed to be run in that period of time.
+    // For desktop, we sync framerate to audio at 1.0x speed
+    static uint64_t lastTime = SDL_GetTicks64();
+    uint64_t now = SDL_GetTicks64();
+    double deltaMs = static_cast<double>(now - lastTime);
+    lastTime = now;
+
+    // How many GB cycles should have elapsed in this real time delta?
+                           //v milliseconds to seconds conversion
+    double targetCycles = (deltaMs / 1000.0) * GBHardWare::MASTER_CLOCK * GBSettings::RUNTIME_SPEED;
+    int cycleBudget = static_cast<int>(std::min(targetCycles, (double)GBSettings::CYCLES_PER_FRAME * 2));
+#else
+    uint64_t startTime = SDL_GetTicks64();
+    int cycleBudget = GBSettings::CYCLES_PER_FRAME;
+#endif
 
     SDL_Event event;
     while (SDL_PollEvent(&event))
@@ -76,11 +94,8 @@ void LoopIteration()
     const InputState& keyboard = app.inputHandler.Poll();
     app.gameboy->UpdateInput(app.inputHandler);
 
-    // --- GB core tick ---
-    uint64_t startTime = SDL_GetTicks64();
-
     int cyclesThisFrame = 0;
-    while (cyclesThisFrame < GBSettings::CYCLES_PER_FRAME)
+    while (cyclesThisFrame < cycleBudget)
     {
         int cycles = app.gameboy->Update();
         if (cycles <= 0) break;
@@ -90,22 +105,27 @@ void LoopIteration()
         {
             if (GBSettings::RUNTIME_SPEED != 1.0f)
             {
-                // Fast-forward: drop audio if queue is full
+                // Fast forward: drop audio if queue is full
                 if (SDL_GetQueuedAudioSize(app.audioDeviceID) <= 4096 * sizeof(float) * 2)
                     SDL_QueueAudio(app.audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
             }
             else
             {
-                // Normal mode.
+                // NORMAL MODE
+                // Strict Audio Syncing
                 // On web we CANNOT busy-wait (SDL_Delay blocks the browser thread).
                 // Instead we just skip queuing if the buffer is already full.
                 // The browser's audio scheduler will catch up on its own.
 #ifndef __EMSCRIPTEN__
                 while (SDL_GetQueuedAudioSize(app.audioDeviceID) > 4096 * sizeof(float) * 2)
+                {
                     SDL_Delay(1);
-#endif
+                }
+                SDL_QueueAudio(app.audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
+#else
                 if (SDL_GetQueuedAudioSize(app.audioDeviceID) <= 4096 * sizeof(float) * 2)
                     SDL_QueueAudio(app.audioDeviceID, audioBuffer.data(), audioBuffer.size() * sizeof(float));
+#endif
             }
 
             app.gameboy->ClearAudioBuffer();
@@ -141,8 +161,7 @@ void LoopIteration()
     ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
     SDL_GL_SwapWindow(app.window);
 
-    // --- Frame limiter (native only) ---
-    // On web the browser's requestAnimationFrame already caps us at ~60fps.
+    // --- Frame limiter ---
 #ifndef __EMSCRIPTEN__
     if (GBSettings::RUNTIME_SPEED > 0.0f)
     {
@@ -274,10 +293,9 @@ int main(int argc, char* argv[])
     // Main loop
     // -------------------------------------------------------------------------
 #ifdef __EMSCRIPTEN__
+    io.IniFilename = nullptr;
+    LoadDefaultWebLayout();
     // 0 = use requestAnimationFrame (~60fps), 1 = simulate infinite loop
-    // We pass 0 for fps (let the browser decide) and 1 for simulate_infinite_loop
-    // so that main() blocks here and doesn't fall through to cleanup code,
-    // which would destroy everything before the first frame runs.
     WebBridge::SetupRomInput();
     WebBridge::SetRomLoadedCallback([](std::vector<uint8_t> romData) {
         g_app.gameboy->InsertCartridge(std::move(romData));
@@ -289,7 +307,7 @@ int main(int argc, char* argv[])
 #endif
 
     // -------------------------------------------------------------------------
-    // Cleanup (native only — on web the page is just closed)
+    // Cleanup
     // -------------------------------------------------------------------------
     delete g_app.gameboy;
     delete g_app.renderer;

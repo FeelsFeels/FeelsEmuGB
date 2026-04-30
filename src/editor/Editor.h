@@ -54,7 +54,11 @@ struct RomBrowser
 	std::string selectedFile = "";
 	std::vector<std::string> cachedEntries;
 
+#ifndef __EMSCRIPTEN__
     bool isVisible = true;
+#else
+    bool isVisible = false;
+#endif
 
 	bool Draw(std::string* outPath);
 };
