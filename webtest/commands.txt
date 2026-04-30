@@ -1,6 +1,0 @@
-EMCC
-
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass
-Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-& "C:\Users\Rooks\Documents\GitHub\emsdk\emsdk_env.ps1"
-
