@@ -5,32 +5,43 @@
 // -----------------------------------------------------------------------------
 // EM_JS definition — compiled exactly once here in WebBridge.cpp.
 // -----------------------------------------------------------------------------
+//EM_JS(void, js_openRomFilePicker, (), {
+//    const input = document.createElement('input');
+//    input.type = 'file';
+//    input.accept = '.gb,.gbc';
+//
+//    input.onchange = function(e)
+// {
+
 EM_JS(void, js_openRomFilePicker, (), {
+    document.getElementById('rom-file-input').click();
+    });
+
+
+EM_JS(void, js_setupRomInput, (), {
     const input = document.createElement('input');
     input.type = 'file';
+    input.id = 'rom-file-input';
     input.accept = '.gb,.gbc';
-
-    input.onchange = function(e)
+    input.style.display = 'none';
+    input.addEventListener('change', function() {
+        const file = input.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = function(ev)
  {
-const file = e.target.files[0];
-if (!file) return;
-
-const reader = new FileReader();
-reader.onload = function(ev)
-{
 const bytes = new Uint8Array(ev.target.result);
-const len = bytes.length;
-
-const ptr = Module._malloc(len);
-Module.HEAPU8.set(bytes, ptr);
-Module._js_onRomLoaded(ptr, len);
-Module._free(ptr);
+const ptr = _malloc(bytes.length);
+HEAPU8.set(bytes, ptr);
+_js_onRomLoaded(ptr, bytes.length);
+_free(ptr);
+input.value = '';
 };
 reader.readAsArrayBuffer(file);
-};
-
-input.click();
+});
+document.body.appendChild(input);
     });
+
 
 // -----------------------------------------------------------------------------
 namespace WebBridge
@@ -45,6 +56,10 @@ namespace WebBridge
     void OpenRomFilePicker()
     {
         js_openRomFilePicker();
+    }
+    void SetupRomInput()
+    {
+        js_setupRomInput();
     }
 }
 

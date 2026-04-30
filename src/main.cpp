@@ -278,6 +278,7 @@ int main(int argc, char* argv[])
     // We pass 0 for fps (let the browser decide) and 1 for simulate_infinite_loop
     // so that main() blocks here and doesn't fall through to cleanup code,
     // which would destroy everything before the first frame runs.
+    WebBridge::SetupRomInput();
     WebBridge::SetRomLoadedCallback([](std::vector<uint8_t> romData) {
         g_app.gameboy->InsertCartridge(std::move(romData));
     });

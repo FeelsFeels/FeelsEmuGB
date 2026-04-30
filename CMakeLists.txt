@@ -125,6 +125,7 @@ if(EMSCRIPTEN)
          -s EXPORTED_FUNCTIONS=['_malloc','_free','_main'] \
          -lidbfs.js \
          -s ASSERTIONS=1"
+         #--shell-file ${CMAKE_SOURCE_DIR}/shell.html
     )
 
     target_link_libraries(${PROJECT_NAME} PRIVATE imgui)

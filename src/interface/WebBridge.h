@@ -18,6 +18,7 @@ namespace WebBridge
 
     void SetRomLoadedCallback(RomLoadedCallback callback);
     void OpenRomFilePicker();
+    void SetupRomInput();
 }
 
 // -----------------------------------------------------------------------------
@@ -28,6 +29,7 @@ namespace WebBridge
 extern "C" {
     void js_openRomFilePicker();
     void js_onRomLoaded(uint8_t* data, int length);
+    void js_setupRomInput();
 }
 
 #endif // __EMSCRIPTEN__

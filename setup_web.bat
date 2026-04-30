@@ -6,7 +6,13 @@ echo ==========================================
 if not exist build_web mkdir build_web
 
 echo [1/2] Configuring...
-emcmake cmake -S . -B build_web -DCMAKE_BUILD_TYPE=Release
+call emcmake cmake -S . -B build_web -DCMAKE_BUILD_TYPE=Release
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo CONFIGURATION FAILED - exit code %ERRORLEVEL%
+    pause
+    exit /b %ERRORLEVEL%
+)
 
 echo.
 echo [2/2] Building...
