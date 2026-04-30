@@ -1,5 +1,5 @@
 # FeelsEmuGB
-Let's see where this learning project takes us!  
+Let's see where this project takes us!  
 I want to get the core features in first, before focusing on accuracy.  
 Goal: Help others (and myself!) better understand the architecture of the Game Boy.
 
@@ -7,12 +7,12 @@ Goal: Help others (and myself!) better understand the architecture of the Game B
 
 🚧 Work in Progress 🚧  
 To do list - GB  
-ROM Banking / MBCs: MBC1✅, the rest not yet  
+ROM Banking / MBCs: MBC1, MBC3 (w/o RTC), MBC5 ✅  
 RAM Saving ✅  
-Audio  
-Pass the other tests  
-Joypad hardware interrupts
-
+Audio ✅  
+Compiling to Web ✅  
+GBC Support  
+Accuracy Improvements  
 
 
 To do list - Editor features  
@@ -23,9 +23,9 @@ Input remappping
 Practice writing shaders for things like a scanline effect  
 
 
-Status:  
-CPU - Blargg's test roms - cpu_instrs all passed ✅  
-Input: D-pad (WASD), Select/Start(ZX), B/A(JK)  
-MBCs: ROM-only, MBC1
+Input:  
+D-pad (WASD), Select/Start(ZX), B/A(JK)  
 
-To build: Just run setup.bat, or cmake on the root directory. Hopefully will work. Tried to make it as hassle-free as possible. Requires CMake.
+To build:  
+Requires CMake.  
+Just run setup.bat, or cmake on the root directory. Hopefully will work. *Put your roms in the roms/ folder.* I will fix this...  
