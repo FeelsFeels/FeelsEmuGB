@@ -6,16 +6,18 @@ class Bus;
 class Timer
 {
 public:
+	void AttachBus(Bus* p) { bus = p; }
 
 	void Tick(int cycles);
 
 	uint8_t Read(Address addr);
 	void Write(Address addr, uint8_t val);
 
-	void AttachBus(Bus* p) { bus = p; }
+	uint16_t GetDiv() { return div; }
 
 	void SaveState(std::ofstream& out);
 	void LoadState(std::ifstream& in);
+
 private:
 	Bus* bus;
 

@@ -254,12 +254,12 @@ There are two types of palletes - Background palette data, and OBJ palette data.
 But note that the color index 0 is ignored for OBJ since 0 is transparent for OBJs. There are also two OBJ palettes. One at 0xFF48 and one at 0xFF49.
 Each object chooses which palette to use from it's OAM entry (see above, "DMG Palette").
 
-
+=================================================================================================
 Deeper understanding of the clock.
 The Master clock runs at 4.194304Mhz. So 4,194,304 cycles per second. This is in T-Cycles.
 T-Cycles are the smallest unit of measurable time.
 M-Cycles are the useful units of time. In the gameboy's case, 4 T cycles -> 1 M cycle.
-
+===========================================================================================
 Timing for graphics:
 GB resolution: 160 x 144
 Dots are same as cycles, one 4.194 Mhz time unit. 1 Dot = 1/4,194,304 second

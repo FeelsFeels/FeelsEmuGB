@@ -1,5 +1,6 @@
 #include "APU.h"
 #include "Bus.h"
+#include "Timer.h"
 #include "../GameBoySettings.h"
 
 /*
@@ -30,6 +31,8 @@ const int SQUARE_DUTY_PATTERNS[4][8] =
 //           = 16 * divider * 2^shift
 const int noiseDivisors[8] = { 8, 16, 32, 48, 64, 80, 96, 112 };
 
+uint16_t apuTargetBitMask = 0x1000; //4th bit
+
 // Helper
 // Returns the newly calculated frequency, or a value > 2047 if it overflowed.
 uint16_t CalculateSweepFrequency(SquareChannel& ch)
@@ -41,7 +44,6 @@ uint16_t CalculateSweepFrequency(SquareChannel& ch)
 
     return newFrequency;
 }
-
 
 
 APU::APU()
@@ -261,12 +263,16 @@ void APU::Tick(int cycles)
     for (int i = 0; i < cycles; ++i)
     {
         // Tick the Frame Sequencer (512 Hz, once every 8192 dots)
-        internalCycles--;
-        if (internalCycles <= 0)
+        // APU observes the timer class for div-apu ticks
+
+        //// ticks on falling edge. that is, previous state is 1, current state is 0.
+        bool currentTargetBitState = timer->GetDiv() & apuTargetBitMask;
+        if (previousTargetBitState && !currentTargetBitState)
         {
-            internalCycles += GBHardWare::DIV_APU_PERIOD;
             StepDivAPUEvent();
         }
+        previousTargetBitState = currentTargetBitState;
+
 
         // Tick the Channel Oscillators (High Frequency)
         TickChannel1(1);

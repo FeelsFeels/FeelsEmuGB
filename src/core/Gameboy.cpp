@@ -9,6 +9,8 @@ GameBoy::GameBoy()
 
 	timer.AttachBus(&bus);
 
+	apu.AttachTimer(&timer);
+
 	joypad.Reset();
 
 	bus.AttachCPU(&cpu);

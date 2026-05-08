@@ -11,6 +11,8 @@ constexpr int T_CYCLES_PER_WAVE_TICK = 2;
 constexpr int MAX_LENGTH_TIMER_CH_1_2_4 = 64;
 constexpr int MAX_LENGTH_TIMER_CH3      = 256;
 
+class Timer;
+
 struct SquareChannel
 {
 	uint8_t NRx4;	// TL-- -FFF: Trigger, Length Enable, Frequency MSB
@@ -86,6 +88,8 @@ class APU
 public:
 	APU();
 
+	void AttachTimer(Timer* p) { timer = p; }
+
 	void ResetRegisters();
 	void ResetWaveTable();
 	void DisableAPU();
@@ -135,7 +139,9 @@ private:
 
 	// APU Timer shortcut. Instead of ticking div-apu based on the system timer, I count 8192 cycles instead.
 	// TODO: Accuracy. 
-	uint16_t internalCycles = 8192;
+	Timer* timer;
+	bool previousTargetBitState = false;
+
 	uint8_t divAPU = 0;
 
 	std::vector<float> audioBuffer;
