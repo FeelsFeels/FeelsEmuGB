@@ -6,6 +6,9 @@
 #include <vector>
 
 class Bus; //Forward decl
+class Timer;
+class PPU;
+class APU;
 
 class CPU
 {
@@ -13,6 +16,10 @@ public:
 	CPU();
 
 	void AttachBus(Bus* p) { bus = p; }
+	void AttachTimer(Timer* p) { timer = p; }
+	void AttachPPU(PPU* p) { ppu = p; }
+	void AttachAPU(APU* p) { apu = p; }
+
 	void ResetRegisters();	// Call at the start of program, after Boot ROM finishes
 
 	int HandleInterrupts();
@@ -33,6 +40,11 @@ public:
 	bool GetIME() const { return ime; }
 
 private:
+	void Clock();
+	uint8_t ReadByte(Address addr);
+	uint16_t ReadWord(Address addr);
+	void WriteByte(Address addr, uint8_t value);
+	void WriteWord(Address addr, uint16_t value);
 
 	struct Instruction
 	{
@@ -55,6 +67,10 @@ private:
 	//uint8_t lastInstruction;	// just for debug information draw purposes;
 
 	Bus* bus;
+	Timer* timer;
+	PPU* ppu;
+	APU* apu;
+	
 	Registers reg;
 
 	// Internal CPU state + interrupts

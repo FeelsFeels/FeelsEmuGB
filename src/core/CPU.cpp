@@ -1,5 +1,30 @@
 #include "CPU.h"
 #include "Bus.h"
+#include "Timer.h"
+#include "PPU.h"
+#include "APU.h"
+
+#ifdef GAMEBOY_DOCTOR
+// Code for testing via GB doctor
+// LOG BEFORE EXECUTION (Standard requirement)
+// Format: A:01 F:B0 B:00 C:13 D:00 E:D8 H:01 L:4D SP:FFFE PC:0100 PCMEM:00,C3,13,02
+
+// Fetch the 4 bytes at PC for the log (without incrementing PC!)
+uint8_t pcmem[4];
+for (int i = 0; i < 4; i++)
+{
+    pcmem[i] = bus->Read(reg.pc + i);
+}
+
+char logBuffer[100];
+sprintf(logBuffer, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X",
+    reg.a, reg.f, reg.b, reg.c, reg.d, reg.e, reg.h, reg.l, reg.sp, reg.pc,
+    pcmem[0], pcmem[1], pcmem[2], pcmem[3]
+);
+std::cout << logBuffer << "\n";
+#endif
+
+
 
 CPU::CPU()
 {
@@ -48,27 +73,9 @@ int CPU::Tick()
     }
 
 
-#ifdef GAMEBOY_DOCTOR
-    // Code for testing via GB doctor
-    // LOG BEFORE EXECUTION (Standard requirement)
-    // Format: A:01 F:B0 B:00 C:13 D:00 E:D8 H:01 L:4D SP:FFFE PC:0100 PCMEM:00,C3,13,02
-
-    // Fetch the 4 bytes at PC for the log (without incrementing PC!)
-    uint8_t pcmem[4];
-    for (int i = 0; i < 4; i++)
-    {
-        pcmem[i] = bus->Read(reg.pc + i);
-    }
-
-    char logBuffer[100];
-    sprintf(logBuffer, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X",
-        reg.a, reg.f, reg.b, reg.c, reg.d, reg.e, reg.h, reg.l, reg.sp, reg.pc,
-        pcmem[0], pcmem[1], pcmem[2], pcmem[3]
-    );
-    std::cout << logBuffer << "\n";
-#endif
-
-    uint8_t opcode = bus->Read(reg.pc++);
+    uint8_t opcode = FetchByte();
+    //uint8_t opcode = ReadByte(reg.pc++);
+    //uint8_t opcode = bus->Read(reg.pc++);
 
 
     (this->*instructions[opcode].execute)();
@@ -168,16 +175,42 @@ int CPU::HandleInterrupts()
     return 0;
 }
 
+void CPU::Clock()
+{
+    // tick 4 on other components
+    timer->Tick(4);
+    ppu->Tick(4);
+    apu->Tick(4);
+}
 
+uint8_t CPU::ReadByte(Address addr)
+{
+    Clock();
+    return bus->Read(addr);
+}
 
+uint16_t CPU::ReadWord(Address addr)
+{
+    uint8_t lo = ReadByte(addr);
+    uint8_t hi = ReadByte(addr + 1);
+    
+    return (hi << 8) | lo;
+}
 
+void CPU::WriteByte(Address addr, uint8_t value)
+{
+    Clock();
+    bus->Write(addr, value);
+}
 
+void CPU::WriteWord(Address addr, uint16_t value)
+{
+    uint8_t lo = value & 0xFF;
+    uint8_t hi = (value >> 8) & 0xFF;
 
-
-
-
-
-
+    WriteByte(addr, lo);
+    WriteByte(addr + 1, hi);
+}
 
 
 
@@ -194,45 +227,50 @@ int CPU::HandleInterrupts()
 // Helpers
 uint8_t CPU::FetchByte()
 {
-    return bus->Read(reg.pc++);
+    return ReadByte(reg.pc++);
+    //return bus->Read(reg.pc++);
 }
 
 int8_t CPU::FetchByteSigned()
 {
-    return (int8_t)bus->Read(reg.pc++);
+    return (int8_t)ReadByte(reg.pc++);
+    //return (int8_t)bus->Read(reg.pc++);
 }
 
 uint16_t CPU::FetchWord()
 {
-    uint16_t lo = FetchByte();
-    uint16_t hi = FetchByte();
-    return (hi << 8) | lo;
+    uint16_t val = ReadWord(reg.pc++); reg.pc++;
+    return val;
+    //uint16_t lo = FetchByte();
+    //uint16_t hi = FetchByte();
+    //return (hi << 8) | lo;
 }
 
 uint8_t CPU::PopByte()
 {
-    return bus->Read(reg.sp++);
+    return ReadByte(reg.sp++);
+    //return bus->Read(reg.sp++);
 }
 
 uint16_t CPU::PopWord()
 {
-    uint16_t lo = bus->Read(reg.sp++);
-    uint16_t hi = bus->Read(reg.sp++);
-    return (hi << 8) | lo;
+    uint16_t val = ReadWord(reg.sp++); reg.sp++;
+    return val;
+    //uint16_t lo = bus->Read(reg.sp++);
+    //uint16_t hi = bus->Read(reg.sp++);
+    //return (hi << 8) | lo;
 }
 
 void CPU::PushByte(uint8_t val)
 {
-    bus->Write(--reg.sp, val);
+    WriteByte(--reg.sp, val);
+    //bus->Write(--reg.sp, val);
 }
 
 void CPU::PushWord(uint16_t val)
 {
-    uint8_t hi = (val >> 8) & 0xFF;
-    uint8_t lo = val & 0xFF;
-
-    bus->Write(--reg.sp, hi);
-    bus->Write(--reg.sp, lo);
+    reg.sp -= 2;
+    WriteWord(reg.sp, val);
 }
 
 

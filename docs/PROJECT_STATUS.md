@@ -43,7 +43,39 @@ The emulator is currently capable of running commercial titles including *Pokém
 - **List of failed Blargg tests:** cgb_sound, dg_sound, interrupt_time, mem_timing, oam_bug, halt_bug.
 - **Failed Tests for Sound: Too many to count. 01, 03, 04, 05, 07, 08, 09, 10, 11, 12** 
 
-### 4. Editor Improvements
+### 4. Accuracy Tracking
+#### Blargg
+- **cgb_sound:** I haven't even implemented cgb.
+- **cpu_instrs:** Passed
+- **dmg_sound:**
+  - 01-registers: NR10-NR51 and wave RAM write/read, Failed #2
+  - 03-trigger: Enabling in first half of length period should clock length. Failed #3
+  - 04-sweep: If shift=0 and period=0, trigger disables. Failed #10
+  - 05-sweep details: Exiting negate mode after calculation disables channel. Failed #4
+  - 07-len sweep period sync: Powering up APU MODs next frame time with 8192 Failed #5
+  - 08-len ctr during power 40 00 40 40 3CF589B4 Failed
+  - 09-wave read while on Failed
+  - 10-wave trigger while on
+  - 11-regs after power: Powering off shouldn't affect NR41 Failed #4
+  - 12-wave write while on
+- **instr_timing:** Passed
+- **interrupt_time:** 00 00 00 00 08 0D 00 00 00 00 08 0D 7F8F4AAF Failed
+- **mem_timing:** Failed 3/3. read_timing, write_timing, modify_timing
+  -
+  -
+  -
+- **mem_timing2:** Same as above
+- **oam_bug:** 
+  - 01-lcd sync: Turning LCD on starts too late in scanline Failed #2
+  - 02-causes: LD DE, $FE00: INC DE. Failed #2
+  - 04-scanline timing: INC DE at first corruption Failed #3
+  - 05-timing_bug: Should corrupt at beginning of first scanline Failed #2
+  - 07-timing effect: Failed
+  - 08-instr effect: 00000000 INC/DEC rp pattern is wrong Failed #2
+
+#### Mooneye
+
+### 5. Editor Improvements
 - **Sprite Palette Editor:** Very cool.
 - **Pause button:** Especially so we can inspect the state of the gameboy.
 

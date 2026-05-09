@@ -4,6 +4,9 @@
 GameBoy::GameBoy()
 {
 	cpu.AttachBus(&bus);
+	cpu.AttachTimer(&timer);
+	cpu.AttachPPU(&ppu);
+	cpu.AttachAPU(&apu);
 
 	ppu.AttachBus(&bus);
 

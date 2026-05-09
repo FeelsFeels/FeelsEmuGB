@@ -577,11 +577,22 @@ Low-Freq Clock ticks (every 8192 cycles) -> Shapes the volume/pitch/duration.
 Every 95 CPU Cycles:Mixer samples the active value -> Sends to SDL -> You hear sound.
 
 
+=============================================
+Regarding testing
+
+mem_timing output format by blargg
+[CB] opcode:tested-correct
+
+example from my fail:
+36: 2-3
+opcode 36, LD (HL) u8, being run, the read/write occuring at 2 cycles, while it should have taken 3.
 
 
+Regarding how the CPU ACTUALLY WORKS. I've got it wrong the whole time.
+when you fetch an opcode via the bus, that also takes 4 cycles which i forgot to account for.
 
-
-
+    instructions[0x08] = { &CPU::OP_08, "LD (a16), SP", 20 };
+    instructions[0x0E] = { &CPU::OP_0E, "LD C, n8", 8 }; execution takes 8 cycles, but in total it's actually 12 t cycles.
 
 
 
