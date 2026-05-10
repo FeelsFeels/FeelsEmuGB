@@ -24,7 +24,12 @@ sprintf(logBuffer, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%
 std::cout << logBuffer << "\n";
 #endif
 
-
+// CPU Timing strategy
+// Every bus R/W, and by extension, the fetch, pop, push, calls call Clock() before the actual bus access.
+// This is to keep timer in sync with the CPU.
+// As for the opcodes which have additional cycles consumed that are unrelated to bus access, these have to call Clock() within the opcodes.
+// The return value for Tick is still the total T-cycle count for the instruction. The purpose of the Clock() is again, just to keep Timer synced with CPU.
+// CPU ticks timer. Timer is not ticked in the main loop.
 
 CPU::CPU()
 {
@@ -73,17 +78,18 @@ int CPU::Tick()
     }
 
 
-    uint8_t opcode = FetchByte();
-    //uint8_t opcode = ReadByte(reg.pc++);
+    uint8_t opcode = FetchByte();   // 4 T cycles consumed
     //uint8_t opcode = bus->Read(reg.pc++);
 
-
     (this->*instructions[opcode].execute)();
-    totalCyclesForInstruction += instructions[opcode].cycles;   //CB instruction increments inside OP_CB()
 
-    //lastInstruction = opcode;
+    // At this point, totalCyclesForInstruction only contains cycles accumlated by Clock()
+    int cyclesExecutedByTimer = totalCyclesForInstruction;
+    totalCyclesForInstruction += instructions[opcode].cycles;
+    int remainingCycles = totalCyclesForInstruction - cyclesExecutedByTimer;
 
-    static int instruction_count = 0;
+    if (remainingCycles > 0) timer->Tick(remainingCycles);
+    //totalCyclesForInstruction = instructions[opcode].cycles;
     return totalCyclesForInstruction;
 }
 
@@ -179,8 +185,6 @@ void CPU::Clock()
 {
     // tick 4 on other components
     timer->Tick(4);
-    ppu->Tick(4);
-    apu->Tick(4);
 }
 
 uint8_t CPU::ReadByte(Address addr)
@@ -212,19 +216,6 @@ void CPU::WriteWord(Address addr, uint16_t value)
     WriteByte(addr + 1, hi);
 }
 
-
-
-
-
-
-
-
-
-
-
-// NOOOOOPE YALL STAY DOWN THERE WHERE I CAN'T SEE YOU
-// BTW the opcode wrappers are in CPUOpcodes.cpp
-// Helpers
 uint8_t CPU::FetchByte()
 {
     return ReadByte(reg.pc++);
@@ -234,37 +225,28 @@ uint8_t CPU::FetchByte()
 int8_t CPU::FetchByteSigned()
 {
     return (int8_t)ReadByte(reg.pc++);
-    //return (int8_t)bus->Read(reg.pc++);
 }
 
 uint16_t CPU::FetchWord()
 {
-    uint16_t val = ReadWord(reg.pc++); reg.pc++;
+    uint16_t val = ReadWord(reg.pc); reg.pc += 2;
     return val;
-    //uint16_t lo = FetchByte();
-    //uint16_t hi = FetchByte();
-    //return (hi << 8) | lo;
 }
 
 uint8_t CPU::PopByte()
 {
     return ReadByte(reg.sp++);
-    //return bus->Read(reg.sp++);
 }
 
 uint16_t CPU::PopWord()
 {
-    uint16_t val = ReadWord(reg.sp++); reg.sp++;
+    uint16_t val = ReadWord(reg.sp); reg.sp += 2;
     return val;
-    //uint16_t lo = bus->Read(reg.sp++);
-    //uint16_t hi = bus->Read(reg.sp++);
-    //return (hi << 8) | lo;
 }
 
 void CPU::PushByte(uint8_t val)
 {
     WriteByte(--reg.sp, val);
-    //bus->Write(--reg.sp, val);
 }
 
 void CPU::PushWord(uint16_t val)
@@ -275,6 +257,12 @@ void CPU::PushWord(uint16_t val)
 
 
 
+
+
+
+
+
+// Instruction helpers
 // My favourite instruction
 void CPU::NOP()
 {
@@ -299,21 +287,21 @@ void CPU::LD_r8_r8(ByteRegister& dst, const ByteRegister& value)
 
 void CPU::LD_r8_addr(ByteRegister& dst, const WordRegister& addr)
 {
-    dst = bus->Read(addr);
+    dst = ReadByte(addr);
 }
 
 void CPU::LD_addr_r8(const WordRegister& addr, const ByteRegister& value)
 {
-    bus->Write(addr, value);
+    WriteByte(addr, value);
 }
 
+//Test WriteWord
 void CPU::LD_addr_SP(const WordRegister& addr)
 {
     uint8_t lo = reg.sp & 0xFF;
     uint8_t hi = (reg.sp >> 8) & 0xFF;
-
-    bus->Write(addr, lo);     // Low byte at address n
-    bus->Write(addr + 1, hi); // High byte at address n+1
+    WriteByte(addr, lo);      // Low byte at address n
+    WriteByte(addr + 1, hi);  // High byte at address n+1
 }
 
 void CPU::LD_r16_n16(WordRegister& dst, uint16_t value)
@@ -633,7 +621,7 @@ void CPU::BIT_addr(uint8_t bit, const WordRegister& addr)
 {
     uint8_t test = 1 << bit;
 
-    reg.SetZ((bus->Read(addr) & test) == 0);
+    reg.SetZ((ReadByte(addr) & test) == 0);
     reg.SetN(0);
     reg.SetH(1);
 }
@@ -732,5 +720,7 @@ void CPU::DAA()
 void CPU::STOP()
 {
     stopped = true;
-    bus->Write(0xFF04, 0);
+    FetchByte(); // 
+    bus->Write(0xFF04, 0);  // Internal hardware side effect, skip clocking cycles.
+    //WriteByte(0xFF04, 0);
 }

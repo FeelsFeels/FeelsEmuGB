@@ -98,7 +98,7 @@ int GameBoy::Update()
 	}
 
 	int cycles = cpu.Tick();
-	timer.Tick(cycles);
+	//timer.Tick(cycles);
 	ppu.Tick(cycles);
 	apu.Tick(cycles);
 

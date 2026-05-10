@@ -40,12 +40,6 @@ public:
 	bool GetIME() const { return ime; }
 
 private:
-	void Clock();
-	uint8_t ReadByte(Address addr);
-	uint16_t ReadWord(Address addr);
-	void WriteByte(Address addr, uint8_t value);
-	void WriteWord(Address addr, uint16_t value);
-
 	struct Instruction
 	{
 		void (CPU::*execute)();
@@ -62,8 +56,10 @@ private:
 	std::vector<Instruction> instructions;
 	std::vector<CBInstruction> cbInstructions;
 
-	int totalCyclesForInstruction; // Computing the final cycles taken by each operation
+	uint8_t GetReg(uint8_t idx);
+	void SetReg(uint8_t idx, uint8_t val);
 
+	int totalCyclesForInstruction; // Computing the final cycles taken by each operation
 	//uint8_t lastInstruction;	// just for debug information draw purposes;
 
 	Bus* bus;
@@ -83,6 +79,30 @@ private:
 	uint8_t interruptFlagEnabled; // 0xFFFF
 
 	
+	//////////////////////////////////////////
+	// Core Timing and Bus R/W instructions //
+	// Clock() ticks the timer and adds 4 (1 M cycle) to totalCyclesForInstruction
+	//	- Every instruction that reads/writes from the bus goes through the ReadX/WriteX functions, which call Clock() internally.
+	//  - 
+	// ReadByte: 1M, Bus read
+	// ReadWord: 2M, two bus reads for hi and lo bytes
+	// WriteByte: 1M
+	// WriteWord: 2M
+
+	void Clock();
+	uint8_t ReadByte(Address addr);
+	uint16_t ReadWord(Address addr);
+	void WriteByte(Address addr, uint8_t value);
+	void WriteWord(Address addr, uint16_t value);
+
+	uint8_t  FetchByte();	    // fetches byte at pc.
+	int8_t  FetchByteSigned();
+	uint16_t FetchWord();
+
+	uint8_t  PopByte();		    // pop/push from stack (sp)
+	uint16_t PopWord();
+	void PushByte(uint8_t val);
+	void PushWord(uint16_t val);
 
 	// Anything below here, 
 	// just don't look.
@@ -91,14 +111,6 @@ private:
 
 #pragma region Instructions
 	// Helpers for instructions
-	uint8_t  FetchByte();	// from pc
-	int8_t  FetchByteSigned();	// from pc
-	uint16_t FetchWord();
-	uint8_t  PopByte();		// pop/push from stack (sp)
-	uint16_t PopWord();
-	void PushByte(uint8_t val);
-	void PushWord(uint16_t val);
-
 	void NOP();
 	void INVALID();
 

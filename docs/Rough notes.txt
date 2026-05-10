@@ -109,6 +109,27 @@ Memory:
 [PC+2]   -> next opcode
 
 HALT bug: honestly i still really don't understand. Will update if i ever fully internalize this.
+
+Reading opcode tables:
+LD [HL-], A: Load "A" register into HL, then decrement HL. If it were [HL+] then it's just postfix increment.
+
+Reading timing specifications: reads. writes, and internals should Clock().
+fetch
+read
+u16:lower
+read
+u16:upper
+internal
+branch decision?
+write
+PC:upper->(--SP)
+write
+PC:lower->(--SP)
+
+CB opcode pattern:
+bits 7-6: operation group (00=shifts, 01=BIT, 10=RES, 11=SET)
+bits 5-3: which bit (for BIT/RES/SET) or which operation (for shifts)
+bits 2-0: which register (B,C,D,E,H,L,(HL),A)
 ============================================
 
 On CPU Flags:
@@ -579,6 +600,7 @@ Every 95 CPU Cycles:Mixer samples the active value -> Sends to SDL -> You hear s
 
 =============================================
 Regarding testing
+https://gist.github.com/SonoSooS/c0055300670d678b5ae8433e20bea595#nop-and-stop
 
 mem_timing output format by blargg
 [CB] opcode:tested-correct
@@ -594,6 +616,13 @@ when you fetch an opcode via the bus, that also takes 4 cycles which i forgot to
     instructions[0x08] = { &CPU::OP_08, "LD (a16), SP", 20 };
     instructions[0x0E] = { &CPU::OP_0E, "LD C, n8", 8 }; execution takes 8 cycles, but in total it's actually 12 t cycles.
 
+Timer is ticked entirely inside CPU. We call Clock() in between the opcodes themselves to keep the timer in sync.
 
 
-
+Some example instructions:
+OP_18: JR i8, 12t
+    - Fetch opcode: 4t
+    - Fetch Byte(pc) : 4t
+    - Internal 4t
+In this case, void CPU::OP_18() { JR((int8_t)FetchByte()); Clock(); }
+The Clock() call accounts for the Internal 4t. Make sure operations are in order.

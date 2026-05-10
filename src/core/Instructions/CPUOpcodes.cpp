@@ -333,20 +333,21 @@ void CPU::RegisterInstructions()
 
 
 
+
 // --- 0x00 - 0x0F ---
 void CPU::OP_00() { NOP(); }
 void CPU::OP_01() { reg.bc = FetchWord(); } // LD BC, n16
-void CPU::OP_02() { bus->Write(reg.bc, reg.a); } // LD (BC), A
-void CPU::OP_03() { reg.bc++; } // INC BC
+void CPU::OP_02() { WriteByte(reg.bc, reg.a); } // LD (BC), A
+void CPU::OP_03() { Clock(); reg.bc++; } // INC BC
 void CPU::OP_04() { INC_r8(reg.b); }
 void CPU::OP_05() { DEC_r8(reg.b); }
 void CPU::OP_06() { LD_r8_n8(reg.b, FetchByte()); }
 void CPU::OP_07() { RLC(reg.a); reg.SetZ(false); } // RLCA
 
 void CPU::OP_08() { LD_addr_SP(FetchWord()); } // LD (a16), SP
-void CPU::OP_09() { ADD_HL(reg.bc); }
+void CPU::OP_09() { Clock(); ADD_HL(reg.bc); }
 void CPU::OP_0A() { LD_r8_addr(reg.a, reg.bc); } // LD A, (BC)
-void CPU::OP_0B() { reg.bc--; } // DEC BC
+void CPU::OP_0B() { Clock(); reg.bc--; } // DEC BC
 void CPU::OP_0C() { INC_r8(reg.c); }
 void CPU::OP_0D() { DEC_r8(reg.c); }
 void CPU::OP_0E() { LD_r8_n8(reg.c, FetchByte()); }
@@ -355,17 +356,17 @@ void CPU::OP_0F() { RRC(reg.a); reg.SetZ(false); } // RRCA
 // --- 0x10 - 0x1F ---
 void CPU::OP_10() { STOP(); }
 void CPU::OP_11() { reg.de = FetchWord(); } // LD DE, n16
-void CPU::OP_12() { bus->Write(reg.de, reg.a); } // LD (DE), A
-void CPU::OP_13() { reg.de++; } // INC DE
+void CPU::OP_12() { WriteByte(reg.de, reg.a); } // LD (DE), A
+void CPU::OP_13() { Clock(); reg.de++; } // INC DE
 void CPU::OP_14() { INC_r8(reg.d); }
 void CPU::OP_15() { DEC_r8(reg.d); }
 void CPU::OP_16() { LD_r8_n8(reg.d, FetchByte()); }
 void CPU::OP_17() { RL(reg.a); reg.SetZ(false); } // RLA
 
-void CPU::OP_18() { JR((int8_t)FetchByte()); }
-void CPU::OP_19() { ADD_HL(reg.de); }
+void CPU::OP_18() { JR((int8_t)FetchByte()); Clock(); }
+void CPU::OP_19() { Clock(); ADD_HL(reg.de); }
 void CPU::OP_1A() { LD_r8_addr(reg.a, reg.de); } // LD A, (DE)
-void CPU::OP_1B() { reg.de--; } // DEC DE
+void CPU::OP_1B() { Clock(); reg.de--; } // DEC DE
 void CPU::OP_1C() { INC_r8(reg.e); }
 void CPU::OP_1D() { DEC_r8(reg.e); }
 void CPU::OP_1E() { LD_r8_n8(reg.e, FetchByte()); }
@@ -374,32 +375,32 @@ void CPU::OP_1F() { RR(reg.a); reg.SetZ(false); } // RRA
 // --- 0x20 - 0x2F (CONDITIONALS WITH PENALTIES) ---
 void CPU::OP_20() { int8_t off = (int8_t)FetchByte(); if (!reg.GetZ()) JR(off); else totalCyclesForInstruction -= 4; } // JR NZ
 void CPU::OP_21() { reg.hl = FetchWord(); } // LD HL, n16
-void CPU::OP_22() { bus->Write(reg.hl, reg.a); reg.hl++; } // LD (HL+), A
-void CPU::OP_23() { reg.hl++; } // INC HL
+void CPU::OP_22() { WriteByte(reg.hl,reg.a); reg.hl++; } // LD (HL+), A
+void CPU::OP_23() { Clock(); reg.hl++; } // INC HL
 void CPU::OP_24() { INC_r8(reg.h); }
 void CPU::OP_25() { DEC_r8(reg.h); }
 void CPU::OP_26() { LD_r8_n8(reg.h, FetchByte()); }
 void CPU::OP_27() { DAA(); }
 
-void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) JR(off); else totalCyclesForInstruction -= 4; } // JR Z
-void CPU::OP_29() { ADD_HL(reg.hl); }
+void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) { JR(off); Clock(); } else totalCyclesForInstruction -= 4; } // JR Z
+void CPU::OP_29() { Clock(); ADD_HL(reg.hl); }
 void CPU::OP_2A() { LD_r8_addr(reg.a, reg.hl); reg.hl++; } // LD A, (HL+)
-void CPU::OP_2B() { reg.hl--; } // DEC HL
+void CPU::OP_2B() { Clock(); reg.hl--; } // DEC HL
 void CPU::OP_2C() { INC_r8(reg.l); }
 void CPU::OP_2D() { DEC_r8(reg.l); }
 void CPU::OP_2E() { LD_r8_n8(reg.l, FetchByte()); }
 void CPU::OP_2F() { CPL(); }
 
 // --- 0x30 - 0x3F (CONDITIONALS WITH PENALTIES) ---
-void CPU::OP_30() { int8_t off = (int8_t)FetchByte(); if (!reg.GetC()) JR(off); else totalCyclesForInstruction -= 4; } // JR NC
+void CPU::OP_30() { int8_t off = (int8_t)FetchByte(); if (!reg.GetC()) { JR(off); Clock(); } else totalCyclesForInstruction -= 4; } // JR NC
 void CPU::OP_31() { reg.sp = FetchWord(); } // LD SP, n16
-void CPU::OP_32() { bus->Write(reg.hl, reg.a); reg.hl--; } // LD (HL-), A
-void CPU::OP_33() { reg.sp++; } // INC SP
+void CPU::OP_32() { WriteByte(reg.hl, reg.a); reg.hl--; } // LD (HL-), A
+void CPU::OP_33() { Clock(); reg.sp++; } // INC SP
 void CPU::OP_34()
 { // INC (HL)
-    uint8_t val = bus->Read(reg.hl);
+    uint8_t val = ReadByte(reg.hl);
     val++;
-    bus->Write(reg.hl, val);
+    WriteByte(reg.hl, val);
     reg.SetZ(val == 0); reg.SetN(false); reg.SetH((val & 0x0F) == 0);
 }
 void CPU::OP_35()
@@ -409,16 +410,13 @@ void CPU::OP_35()
     bus->Write(reg.hl, val);
     reg.SetZ(val == 0); reg.SetN(true); reg.SetH((val & 0x0F) == 0x0F);
 }
-void CPU::OP_36() { bus->Write(reg.hl, FetchByte()); } // LD (HL), n8
+void CPU::OP_36() { WriteByte(reg.hl, FetchByte()); } // LD (HL), n8
 void CPU::OP_37() { SCF(); }
 
-void CPU::OP_38() { int8_t off = (int8_t)FetchByte(); if (reg.GetC()) JR(off); else totalCyclesForInstruction -= 4; } // JR C
-void CPU::OP_39()
-{
-    ADD_HL(reg.sp); // Note: ADD HL, SP
-}
+void CPU::OP_38() { int8_t off = (int8_t)FetchByte(); if (reg.GetC()) { JR(off); Clock(); } else totalCyclesForInstruction -= 4; } // JR C
+void CPU::OP_39() { Clock(); ADD_HL(reg.sp); } // Note: ADD HL, SP
 void CPU::OP_3A() { LD_r8_addr(reg.a, reg.hl); reg.hl--; } // LD A, (HL-)
-void CPU::OP_3B() { reg.sp--; } // DEC SP
+void CPU::OP_3B() { Clock(); reg.sp--; } // DEC SP
 void CPU::OP_3C() { INC_r8(reg.a); }
 void CPU::OP_3D() { DEC_r8(reg.a); }
 void CPU::OP_3E() { LD_r8_n8(reg.a, FetchByte()); }
@@ -512,7 +510,7 @@ void CPU::OP_82() { ADD(reg.d); }
 void CPU::OP_83() { ADD(reg.e); }
 void CPU::OP_84() { ADD(reg.h); }
 void CPU::OP_85() { ADD(reg.l); }
-void CPU::OP_86() { ADD(bus->Read(reg.hl)); }
+void CPU::OP_86() { ADD(ReadByte(reg.hl)); }
 void CPU::OP_87() { ADD(reg.a); }
 
 // --- ADC (0x88 - 0x8F) ---
@@ -522,7 +520,7 @@ void CPU::OP_8A() { ADDC(reg.d); }
 void CPU::OP_8B() { ADDC(reg.e); }
 void CPU::OP_8C() { ADDC(reg.h); }
 void CPU::OP_8D() { ADDC(reg.l); }
-void CPU::OP_8E() { ADDC(bus->Read(reg.hl)); }
+void CPU::OP_8E() { ADDC(ReadByte(reg.hl)); }
 void CPU::OP_8F() { ADDC(reg.a); }
 
 // --- SUB (0x90 - 0x97) ---
@@ -532,7 +530,7 @@ void CPU::OP_92() { SUB(reg.d); }
 void CPU::OP_93() { SUB(reg.e); }
 void CPU::OP_94() { SUB(reg.h); }
 void CPU::OP_95() { SUB(reg.l); }
-void CPU::OP_96() { SUB(bus->Read(reg.hl)); }
+void CPU::OP_96() { SUB(ReadByte(reg.hl)); }
 void CPU::OP_97() { SUB(reg.a); }
 
 // --- SBC (0x98 - 0x9F) ---
@@ -542,7 +540,7 @@ void CPU::OP_9A() { SUBC(reg.d); }
 void CPU::OP_9B() { SUBC(reg.e); }
 void CPU::OP_9C() { SUBC(reg.h); }
 void CPU::OP_9D() { SUBC(reg.l); }
-void CPU::OP_9E() { SUBC(bus->Read(reg.hl)); }
+void CPU::OP_9E() { SUBC(ReadByte(reg.hl)); }
 void CPU::OP_9F() { SUBC(reg.a); }
 
 // --- AND (0xA0 - 0xA7) ---
@@ -552,7 +550,7 @@ void CPU::OP_A2() { AND(reg.d); }
 void CPU::OP_A3() { AND(reg.e); }
 void CPU::OP_A4() { AND(reg.h); }
 void CPU::OP_A5() { AND(reg.l); }
-void CPU::OP_A6() { AND(bus->Read(reg.hl)); }
+void CPU::OP_A6() { AND(ReadByte(reg.hl)); }
 void CPU::OP_A7() { AND(reg.a); }
 
 // --- XOR (0xA8 - 0xAF) ---
@@ -562,7 +560,7 @@ void CPU::OP_AA() { XOR(reg.d); }
 void CPU::OP_AB() { XOR(reg.e); }
 void CPU::OP_AC() { XOR(reg.h); }
 void CPU::OP_AD() { XOR(reg.l); }
-void CPU::OP_AE() { XOR(bus->Read(reg.hl)); }
+void CPU::OP_AE() { XOR(ReadByte(reg.hl)); }
 void CPU::OP_AF() { XOR(reg.a); }
 
 // --- OR (0xB0 - 0xB7) ---
@@ -572,7 +570,7 @@ void CPU::OP_B2() { OR(reg.d); }
 void CPU::OP_B3() { OR(reg.e); }
 void CPU::OP_B4() { OR(reg.h); }
 void CPU::OP_B5() { OR(reg.l); }
-void CPU::OP_B6() { OR(bus->Read(reg.hl)); }
+void CPU::OP_B6() { OR(ReadByte(reg.hl)); }
 void CPU::OP_B7() { OR(reg.a); }
 
 // --- CP (0xB8 - 0xBF) ---
@@ -582,7 +580,7 @@ void CPU::OP_BA() { CMP(reg.d); }
 void CPU::OP_BB() { CMP(reg.e); }
 void CPU::OP_BC() { CMP(reg.h); }
 void CPU::OP_BD() { CMP(reg.l); }
-void CPU::OP_BE() { CMP(bus->Read(reg.hl)); }
+void CPU::OP_BE() { CMP(ReadByte(reg.hl)); }
 void CPU::OP_BF() { CMP(reg.a); }
 
 
@@ -591,43 +589,42 @@ void CPU::OP_BF() { CMP(reg.a); }
 // ==========================================================
 
 // --- 0xC0 - 0xCF ---
-void CPU::OP_C0() { if (!reg.GetZ()) RET(); else totalCyclesForInstruction -= 12; } // RET NZ: 20 -> 8
+void CPU::OP_C0() { Clock(); if (!reg.GetZ()) { RET(); Clock(); } else totalCyclesForInstruction -= 12; } // RET NZ: 20 -> 8
 void CPU::OP_C1() { reg.bc = PopWord(); } // POP BC
-void CPU::OP_C2() { uint16_t addr = FetchWord(); if (!reg.GetZ()) JP(addr); else totalCyclesForInstruction -= 4; } // JP NZ: 16 -> 12
+void CPU::OP_C2() { uint16_t addr = FetchWord(); if (!reg.GetZ()) { Clock(); JP(addr); } else totalCyclesForInstruction -= 4; } // JP NZ: 16 -> 12
 void CPU::OP_C3() { JP(FetchWord()); } // JP a16
-void CPU::OP_C4() { uint16_t addr = FetchWord(); if (!reg.GetZ()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL NZ: 24 -> 12
-void CPU::OP_C5() { PushWord(reg.bc); } // PUSH BC
+void CPU::OP_C4() { uint16_t addr = FetchWord(); if (!reg.GetZ()) { Clock(); CALL(addr); } else totalCyclesForInstruction -= 12; } // CALL NZ: 24 -> 12
+void CPU::OP_C5() { Clock(); PushWord(reg.bc); } // PUSH BC
 void CPU::OP_C6() { ADD(FetchByte()); }
-void CPU::OP_C7() { RST(0x00); }
+void CPU::OP_C7() { Clock(); RST(0x00); }
 
-void CPU::OP_C8() { if (reg.GetZ()) RET(); else totalCyclesForInstruction -= 12; } // RET Z: 20 -> 8
-void CPU::OP_C9() { RET(); }
-void CPU::OP_CA() { uint16_t addr = FetchWord(); if (reg.GetZ()) JP(addr); else totalCyclesForInstruction -= 4; } // JP Z: 16 -> 12
+void CPU::OP_C8() { Clock(); if (reg.GetZ()) { RET(); Clock(); } else totalCyclesForInstruction -= 12; } // RET Z: 20 -> 8
+void CPU::OP_C9() { Clock(); RET(); }
+void CPU::OP_CA() { uint16_t addr = FetchWord(); if (reg.GetZ()) { Clock(); JP(addr); } else totalCyclesForInstruction -= 4; } // JP Z: 16 -> 12
 //void CPU::OP_CB() {  } // At the bottom of the file
-void CPU::OP_CC() { uint16_t addr = FetchWord(); if (reg.GetZ()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL Z: 24 -> 12
-void CPU::OP_CD() { CALL(FetchWord()); }
+void CPU::OP_CC() { uint16_t addr = FetchWord(); if (reg.GetZ()) { Clock(); CALL(addr); } else totalCyclesForInstruction -= 12; } // CALL Z: 24 -> 12
+void CPU::OP_CD() { Clock(); CALL(FetchWord()); }
 void CPU::OP_CE() { ADDC(FetchByte()); }
-void CPU::OP_CF() { RST(0x08); }
+void CPU::OP_CF() { Clock(); RST(0x08); }
 
 // --- 0xD0 - 0xDF ---
-void CPU::OP_D0() { if (!reg.GetC()) RET(); else totalCyclesForInstruction -= 12; } // RET NC: 20 -> 8
+void CPU::OP_D0() { Clock(); if (!reg.GetC()) { RET(); Clock(); } else totalCyclesForInstruction -= 12; } // RET NC: 20 -> 8
 void CPU::OP_D1() { reg.de = PopWord(); } // POP DE
-void CPU::OP_D2() { uint16_t addr = FetchWord(); if (!reg.GetC()) JP(addr); else totalCyclesForInstruction -= 4; } // JP NC: 16 -> 12
+void CPU::OP_D2() { uint16_t addr = FetchWord(); if (!reg.GetC()) { Clock(); JP(addr); } else totalCyclesForInstruction -= 4; } // JP NC: 16 -> 12
 void CPU::OP_D3() {} // Unused
-void CPU::OP_D4() { uint16_t addr = FetchWord(); if (!reg.GetC()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL NC: 24 -> 12
-void CPU::OP_D5() { PushWord(reg.de); } // PUSH DE
+void CPU::OP_D4() { uint16_t addr = FetchWord(); if (!reg.GetC()) { Clock(); CALL(addr); } else totalCyclesForInstruction -= 12; } // CALL NC: 24 -> 12
+void CPU::OP_D5() { Clock(); PushWord(reg.de); } // PUSH DE
 void CPU::OP_D6() { SUB(FetchByte()); }
-void CPU::OP_D7() { RST(0x10); }
+void CPU::OP_D7() { Clock(); RST(0x10); }
 
-void CPU::OP_D8() { if (reg.GetC()) RET(); else totalCyclesForInstruction -= 12; } // RET C: 20 -> 8
-// --- CHANGED: RETI enables interrupts IMMEDIATELY ---
-void CPU::OP_D9() { RET(); ime = true; } // RETI
-void CPU::OP_DA() { uint16_t addr = FetchWord(); if (reg.GetC()) JP(addr); else totalCyclesForInstruction -= 4; } // JP C: 16 -> 12
+void CPU::OP_D8() { Clock(); if (reg.GetC()) { RET(); Clock(); } else totalCyclesForInstruction -= 12; } // RET C: 20 -> 8
+void CPU::OP_D9() { RET(); Clock(); ime = true; } // RETI
+void CPU::OP_DA() { uint16_t addr = FetchWord(); if (reg.GetC()) { Clock(); JP(addr); } else totalCyclesForInstruction -= 4; } // JP C: 16 -> 12
 void CPU::OP_DB() {} // Unused
-void CPU::OP_DC() { uint16_t addr = FetchWord(); if (reg.GetC()) CALL(addr); else totalCyclesForInstruction -= 12; } // CALL C: 24 -> 12
+void CPU::OP_DC() { uint16_t addr = FetchWord(); if (reg.GetC()) { Clock(); CALL(addr); } else totalCyclesForInstruction -= 12; } // CALL C: 24 -> 12
 void CPU::OP_DD() {} // Unused
 void CPU::OP_DE() { SUBC(FetchByte()); }
-void CPU::OP_DF() { RST(0x18); }
+void CPU::OP_DF() { Clock(); RST(0x18); }
 
 // --- 0xE0 - 0xEF ---
 void CPU::OP_E0() { bus->Write(0xFF00 + FetchByte(), reg.a); } // LDH (n8), A
@@ -635,36 +632,66 @@ void CPU::OP_E1() { reg.hl = PopWord(); } // POP HL
 void CPU::OP_E2() { bus->Write(0xFF00 + reg.c, reg.a); } // LD (C), A
 void CPU::OP_E3() {} // Unused
 void CPU::OP_E4() {} // Unused
-void CPU::OP_E5() { PushWord(reg.hl); } // PUSH HL
+void CPU::OP_E5() { Clock(); PushWord(reg.hl); } // PUSH HL
 void CPU::OP_E6() { AND(FetchByte()); }
-void CPU::OP_E7() { RST(0x20); }
+void CPU::OP_E7() { Clock(); RST(0x20); }
 
-void CPU::OP_E8() { ADD_SP_e8((int8_t)FetchByte()); }
+void CPU::OP_E8() { int8_t val = FetchByte(); Clock(); ADD_SP_e8(val); Clock(); }
 void CPU::OP_E9() { JP(reg.hl); } // JP (HL)
-void CPU::OP_EA() { bus->Write(FetchWord(), reg.a); } // LD (a16), A
+void CPU::OP_EA() { uint16_t addr = FetchWord(); WriteByte(addr, reg.a); } // LD (a16), A
 // EB, EC, ED unused
 void CPU::OP_EE() { XOR(FetchByte()); }
-void CPU::OP_EF() { RST(0x28); }
+void CPU::OP_EF() { Clock(); RST(0x28); }
 
 // --- 0xF0 - 0xFF ---
-void CPU::OP_F0() { reg.a = bus->Read(0xFF00 + FetchByte()); } // LDH A, (n8)
+void CPU::OP_F0() { reg.a = ReadByte(0xFF00 + FetchByte()); } // LDH A, (n8)
 void CPU::OP_F1() { reg.af = PopWord(); reg.f &= 0xF0; } // POP AF (Clean flags)
-void CPU::OP_F2() { reg.a = bus->Read(0xFF00 + reg.c); } // LD A, (C)
+void CPU::OP_F2() { reg.a = ReadByte(0xFF00 + reg.c); } // LD A, (C)
 void CPU::OP_F3() { DI(); }
 void CPU::OP_F4() {} // Unused
-void CPU::OP_F5() { PushWord(reg.af); } // PUSH AF
+void CPU::OP_F5() { Clock(); PushWord(reg.af); } // PUSH AF
 void CPU::OP_F6() { OR(FetchByte()); }
-void CPU::OP_F7() { RST(0x30); }
+void CPU::OP_F7() { Clock(); RST(0x30); }
 
-void CPU::OP_F8() { LD_HL_SP_e8((int8_t)FetchByte()); }
-void CPU::OP_F9() { reg.sp = reg.hl; } // LD SP, HL
-void CPU::OP_FA() { reg.a = bus->Read(FetchWord()); } // LD A, (a16)
+void CPU::OP_F8() { LD_HL_SP_e8((int8_t)FetchByte()); Clock(); }
+void CPU::OP_F9() { Clock(); reg.sp = reg.hl; } // LD SP, HL
+void CPU::OP_FA() { reg.a = ReadByte(FetchWord()); } // LD A, (a16)
 void CPU::OP_FB() { EI(); }
 void CPU::OP_FC() {} // Unused
 void CPU::OP_FD() {} // Unused
 void CPU::OP_FE() { CMP(FetchByte()); }
-void CPU::OP_FF() { RST(0x38); }
+void CPU::OP_FF() { Clock(); RST(0x38); }
 
+
+
+uint8_t CPU::GetReg(uint8_t idx)
+{
+    switch (idx)
+    {
+    case 0: return reg.b;
+    case 1: return reg.c;
+    case 2: return reg.d;
+    case 3: return reg.e;
+    case 4: return reg.h;
+    case 5: return reg.l;
+    case 7: return reg.a;
+    }
+    return 0;
+}
+
+void CPU::SetReg(uint8_t idx, uint8_t val)
+{
+    switch (idx)
+    {
+    case 0: reg.b = val; break;
+    case 1: reg.c = val; break;
+    case 2: reg.d = val; break;
+    case 3: reg.e = val; break;
+    case 4: reg.h = val; break;
+    case 5: reg.l = val; break;
+    case 7: reg.a = val; break;
+    }
+}
 
 // Our special CB
 void CPU::OP_CB()
@@ -673,122 +700,47 @@ void CPU::OP_CB()
     totalCyclesForInstruction += cbInstructions[cb_op].cycles;
 
     uint8_t reg_idx = cb_op & 0x07;
-    uint8_t op_idx = (cb_op >> 3) & 0x1F;
+    uint8_t group = (cb_op >> 6) & 0x03;  // 00,01,10,11
+    uint8_t op_idx = (cb_op >> 3) & 0x07;  // within group
 
-    // Decode the Target (Register or Memory)
-    // We use a pointer to the value so we can write it back easily
+    // Read
     uint8_t val;
-
-    // If it's (HL), we read from memory
     if (reg_idx == 6)
-    {
-        val = bus->Read(reg.hl);
-    }
+        val = ReadByte(reg.hl);
     else
-    {
-        // Map index to register reference
-        switch (reg_idx)
-        {
-        case 0: val = reg.b; break;
-        case 1: val = reg.c; break;
-        case 2: val = reg.d; break;
-        case 3: val = reg.e; break;
-        case 4: val = reg.h; break;
-        case 5: val = reg.l; break;
-        case 7: val = reg.a; break;
-        }
-    }
+        val = GetReg(reg_idx);
 
-    // Perform the Operation
-    // ------------------------------------------
-    // ROTATES & SHIFTS (Rows 0-3)
-    if (op_idx == 0)
-    { // RLC
-        bool carry = (val & 0x80) != 0;
-        val = (val << 1) | carry;
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(carry);
-    }
-    else if (op_idx == 1)
-    { // RRC
-        bool carry = (val & 0x01) != 0;
-        val = (val >> 1) | (carry ? 0x80 : 0);
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(carry);
-    }
-    else if (op_idx == 2)
-    { // RL
-        bool old_c = reg.GetC();
-        bool new_c = (val & 0x80) != 0;
-        val = (val << 1) | old_c;
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(new_c);
-    }
-    else if (op_idx == 3)
-    { // RR
-        bool old_c = reg.GetC();
-        bool new_c = (val & 0x01) != 0;
-        val = (val >> 1) | (old_c ? 0x80 : 0);
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(new_c);
-    }
-    else if (op_idx == 4)
-    { // SLA
-        bool carry = (val & 0x80) != 0;
-        val = val << 1;
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(carry);
-    }
-    else if (op_idx == 5)
-    { // SRA
-        bool carry = (val & 0x01) != 0;
-        val = (val >> 1) | (val & 0x80);
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(carry);
-    }
-    else if (op_idx == 6)
-    { // SWAP
-        val = (val << 4) | (val >> 4);
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(0);
-    }
-    else if (op_idx == 7)
-    { // SRL
-        bool carry = (val & 0x01) != 0;
-        val = val >> 1;
-        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0); reg.SetC(carry);
-    }
-    // BIT TEST (Rows 4-7)
-    else if (op_idx >= 8 && op_idx <= 15)
+    // Execute
+    if (group == 0)                       // shifts/rotates
     {
-        uint8_t bit = op_idx - 8;
-        reg.SetZ(!((val >> bit) & 1));
+        switch (op_idx)
+        {
+        case 0: { bool c = val & 0x80; val = (val << 1) | c; reg.SetC(c); break; }           // RLC
+        case 1: { bool c = val & 0x01; val = (val >> 1) | (c ? 0x80 : 0); reg.SetC(c); break; }  // RRC
+        case 2: { bool c = val & 0x80; val = (val << 1) | reg.GetC(); reg.SetC(c); break; }  // RL
+        case 3: { bool c = val & 0x01; val = (val >> 1) | (reg.GetC() ? 0x80 : 0); reg.SetC(c); break; } // RR
+        case 4: { bool c = val & 0x80; val = val << 1; reg.SetC(c); break; }               // SLA
+        case 5: { bool c = val & 0x01; val = (val >> 1) | (val & 0x80); reg.SetC(c); break; }  // SRA
+        case 6: { val = (val << 4) | (val >> 4); reg.SetC(0); break; }                     // SWAP
+        case 7: { bool c = val & 0x01; val = val >> 1; reg.SetC(c); break; }               // SRL
+        }
+        reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0);
+    }
+    else if (group == 1)                  // BIT - no writeback
+    {
+        reg.SetZ(!((val >> op_idx) & 1));
         reg.SetN(0);
         reg.SetH(1);
-        return; // BIT doesn't write back!
+        return;                           // skip writeback
     }
-    // RES (Rows 8-B)
-    else if (op_idx >= 16 && op_idx <= 23)
-    {
-        uint8_t bit = op_idx - 16;
-        val &= ~(1 << bit);
-    }
-    // SET (Rows C-F)
-    else if (op_idx >= 24 && op_idx <= 31)
-    {
-        uint8_t bit = op_idx - 24;
-        val |= (1 << bit);
-    }
+    else if (group == 2)                  // RES
+        val &= ~(1 << op_idx);
+    else                                  // SET
+        val |= (1 << op_idx);
 
-    // 5. Write Back
+    // Writeback
     if (reg_idx == 6)
-    {
-        bus->Write(reg.hl, val);
-    }
+        WriteByte(reg.hl, val);           // M4 - clocks automatically
     else
-    {
-        switch (reg_idx)
-        {
-        case 0: reg.b = val; break;
-        case 1: reg.c = val; break;
-        case 2: reg.d = val; break;
-        case 3: reg.e = val; break;
-        case 4: reg.h = val; break;
-        case 5: reg.l = val; break;
-        case 7: reg.a = val; break;
-        }
-    }
+        SetReg(reg_idx, val);
 }
