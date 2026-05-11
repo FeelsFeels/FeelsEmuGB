@@ -6,6 +6,8 @@ class Bus;
 class Timer
 {
 public:
+	void ResetRegisters();
+
 	void AttachBus(Bus* p) { bus = p; }
 
 	void Tick(int cycles);

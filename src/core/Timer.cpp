@@ -1,6 +1,14 @@
 #include "Timer.h"
 #include "Bus.h"
 
+void Timer::ResetRegisters()
+{
+	div = 0x1800;
+	tima = 0x00;
+	tma = 0x00;
+	tac = 0xF8;
+}
+
 void Timer::Tick(int cycles)
 {
 	bool timerEnabled = tac & 0x04;

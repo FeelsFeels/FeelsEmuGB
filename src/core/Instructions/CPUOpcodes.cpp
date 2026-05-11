@@ -43,7 +43,6 @@ void CPU::RegisterInstructions()
     instructions[0x1E] = { &CPU::OP_1E, "LD E, n8", 8 };
     instructions[0x1F] = { &CPU::OP_1F, "RRA", 4 };
 
-    // --- CHANGED: Max cycles for conditional jumps ---
     instructions[0x20] = { &CPU::OP_20, "JR NZ, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x21] = { &CPU::OP_21, "LD HL, n16", 12 };
     instructions[0x22] = { &CPU::OP_22, "LDI (HL), A", 8 };
@@ -53,7 +52,6 @@ void CPU::RegisterInstructions()
     instructions[0x26] = { &CPU::OP_26, "LD H, n8", 8 };
     instructions[0x27] = { &CPU::OP_27, "DAA", 4 };
 
-    // --- CHANGED ---
     instructions[0x28] = { &CPU::OP_28, "JR Z, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x29] = { &CPU::OP_29, "ADD HL, HL", 8 };
     instructions[0x2A] = { &CPU::OP_2A, "LDI A, (HL)", 8 };
@@ -63,7 +61,6 @@ void CPU::RegisterInstructions()
     instructions[0x2E] = { &CPU::OP_2E, "LD L, n8", 8 };
     instructions[0x2F] = { &CPU::OP_2F, "CPL", 4 };
 
-    // --- CHANGED ---
     instructions[0x30] = { &CPU::OP_30, "JR NC, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x31] = { &CPU::OP_31, "LD SP, n16", 12 };
     instructions[0x32] = { &CPU::OP_32, "LDD (HL), A", 8 };
@@ -73,7 +70,6 @@ void CPU::RegisterInstructions()
     instructions[0x36] = { &CPU::OP_36, "LD (HL), n8", 12 };
     instructions[0x37] = { &CPU::OP_37, "SCF", 4 };
 
-    // --- CHANGED ---
     instructions[0x38] = { &CPU::OP_38, "JR C, n8", 12 }; // 12 taken, 8 not taken
     instructions[0x39] = { &CPU::OP_39, "ADD HL, SP", 8 };
     instructions[0x3A] = { &CPU::OP_3A, "LDD A, (HL)", 8 };
@@ -238,7 +234,6 @@ void CPU::RegisterInstructions()
     instructions[0xBF] = { &CPU::OP_BF, "CP A", 4 };
 
     // --- CONTROL & I/O (0xC0 - 0xFF) ---
-    // --- CHANGED: Max cycles for conditional control flow ---
     instructions[0xC0] = { &CPU::OP_C0, "RET NZ", 20 };  // 20 taken, 8 not taken
     instructions[0xC1] = { &CPU::OP_C1, "POP BC", 12 };
     instructions[0xC2] = { &CPU::OP_C2, "JP NZ, a16", 16 }; // 16 taken, 12 not taken
@@ -252,7 +247,6 @@ void CPU::RegisterInstructions()
     instructions[0xC9] = { &CPU::OP_C9, "RET", 16 };
     instructions[0xCA] = { &CPU::OP_CA, "JP Z, a16", 16 }; // 16 taken, 12 not taken
 
-    // --- CHANGED: Prefix itself takes 0 here, cycles added in OP_CB ---
     instructions[0xCB] = { &CPU::OP_CB, "PREFIX CB", 0 };
 
     instructions[0xCC] = { &CPU::OP_CC, "CALL Z, a16", 24 }; // 24 taken, 12 not taken
@@ -405,9 +399,9 @@ void CPU::OP_34()
 }
 void CPU::OP_35()
 { // DEC (HL)
-    uint8_t val = bus->Read(reg.hl);
+    uint8_t val = ReadByte(reg.hl);
     val--;
-    bus->Write(reg.hl, val);
+    WriteByte(reg.hl, val);
     reg.SetZ(val == 0); reg.SetN(true); reg.SetH((val & 0x0F) == 0x0F);
 }
 void CPU::OP_36() { WriteByte(reg.hl, FetchByte()); } // LD (HL), n8
@@ -627,9 +621,9 @@ void CPU::OP_DE() { SUBC(FetchByte()); }
 void CPU::OP_DF() { Clock(); RST(0x18); }
 
 // --- 0xE0 - 0xEF ---
-void CPU::OP_E0() { bus->Write(0xFF00 + FetchByte(), reg.a); } // LDH (n8), A
+void CPU::OP_E0() { WriteByte(0xFF00 + FetchByte(), reg.a); } // LDH (n8), A
 void CPU::OP_E1() { reg.hl = PopWord(); } // POP HL
-void CPU::OP_E2() { bus->Write(0xFF00 + reg.c, reg.a); } // LD (C), A
+void CPU::OP_E2() { WriteByte(0xFF00 + reg.c, reg.a); } // LD (C), A
 void CPU::OP_E3() {} // Unused
 void CPU::OP_E4() {} // Unused
 void CPU::OP_E5() { Clock(); PushWord(reg.hl); } // PUSH HL

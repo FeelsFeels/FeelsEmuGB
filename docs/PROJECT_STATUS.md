@@ -60,11 +60,7 @@ The emulator is currently capable of running commercial titles including *Pokém
   - 12-wave write while on
 - **instr_timing:** Passed
 - **interrupt_time:** 00 00 00 00 08 0D 00 00 00 00 08 0D 7F8F4AAF Failed
-- **mem_timing:** Failed 3/3. read_timing, write_timing, modify_timing
-  -
-  -
-  -
-- **mem_timing2:** Same as above
+- **mem_timing:** Passed
 - **oam_bug:** 
   - 01-lcd sync: Turning LCD on starts too late in scanline Failed #2
   - 02-causes: LD DE, $FE00: INC DE. Failed #2
