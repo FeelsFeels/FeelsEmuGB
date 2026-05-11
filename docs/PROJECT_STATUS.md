@@ -40,7 +40,6 @@ The emulator is currently capable of running commercial titles including *Pokém
 - **Pixel FIFO:** PPU currently renders scanlines instantly. A Pixel FIFO implementation is required for precise mid-scanline effects (like the wobbling in *Prehistorik Man*).
 - **Joypad Interrupts:**
 - **APU** - DIV-APU ticks based on raw cycles instead of depending on the div register.
-- **List of failed Blargg tests:** cgb_sound, dg_sound, interrupt_time, mem_timing, oam_bug, halt_bug.
 - **Failed Tests for Sound: Too many to count. 01, 03, 04, 05, 07, 08, 09, 10, 11, 12** 
 
 ### 4. Accuracy Tracking
@@ -60,11 +59,7 @@ The emulator is currently capable of running commercial titles including *Pokém
   - 12-wave write while on
 - **instr_timing:** Passed
 - **interrupt_time:** 00 00 00 00 08 0D 00 00 00 00 08 0D 7F8F4AAF Failed
-- **mem_timing:** Failed 3/3. read_timing, write_timing, modify_timing
-  -
-  -
-  -
-- **mem_timing2:** Same as above
+- **mem_timing:** Passed
 - **oam_bug:** 
   - 01-lcd sync: Turning LCD on starts too late in scanline Failed #2
   - 02-causes: LD DE, $FE00: INC DE. Failed #2

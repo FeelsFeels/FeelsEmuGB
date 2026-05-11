@@ -77,19 +77,11 @@ int CPU::Tick()
         imeNext = false;
     }
 
-
     uint8_t opcode = FetchByte();   // 4 T cycles consumed
-    //uint8_t opcode = bus->Read(reg.pc++);
 
     (this->*instructions[opcode].execute)();
-
-    // At this point, totalCyclesForInstruction only contains cycles accumlated by Clock()
-    int cyclesExecutedByTimer = totalCyclesForInstruction;
     totalCyclesForInstruction += instructions[opcode].cycles;
-    int remainingCycles = totalCyclesForInstruction - cyclesExecutedByTimer;
 
-    if (remainingCycles > 0) timer->Tick(remainingCycles);
-    //totalCyclesForInstruction = instructions[opcode].cycles;
     return totalCyclesForInstruction;
 }
 

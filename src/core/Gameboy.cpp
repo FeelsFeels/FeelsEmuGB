@@ -52,6 +52,7 @@ void GameBoy::InsertCartridge(std::string filepath)
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();
 	cpu.ResetRegisters();
+	timer.ResetRegisters();
 	ppu.ResetRegisters();
 	apu.ResetRegisters();
 }
