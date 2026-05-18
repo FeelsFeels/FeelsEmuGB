@@ -3,10 +3,12 @@
 
 void Timer::ResetRegisters()
 {
-	div = 0x1800;
+	div = 0xAB00;
 	tima = 0x00;
 	tma = 0x00;
 	tac = 0xF8;
+
+	overflowDelay = 0;
 }
 
 void Timer::Tick(int cycles)
@@ -17,8 +19,23 @@ void Timer::Tick(int cycles)
 
 	while (cycles > 0)
 	{
-		--cycles;
-		++div;
+		//--cycles;
+		//++div;
+		cycles -= 4;
+		div += 4;
+		
+		// Overflow delay BEFORE edge detection
+		// This gives the interrupt the documented 4 T cycle delay.
+		if (overflowDelay > 0)
+		{
+			overflowDelay -= 4;
+			if (overflowDelay <= 0)
+			{
+				overflowDelay = 0;
+				tima = tma;
+				bus->RequestInterrupt(InterruptCode::TIMER);
+			}
+		}
 
 		bool currentTargetBitState = (div & (1 << targetBit));
 
@@ -31,8 +48,8 @@ void Timer::Tick(int cycles)
 			++tima;
 			if (tima == 0)
 			{
-				tima = tma;
-				bus->RequestInterrupt(InterruptCode::TIMER);
+				overflowDelay = 4;
+				//bus->RequestInterrupt(InterruptCode::TIMER);
 			}
 		}
 		previousTargetBitState = fallingEdgeDetector;
@@ -60,6 +77,7 @@ void Timer::Write(Address addr, uint8_t val)
 		div = 0;	// "Reset when executing stop instruction" handled in the STOP instruction in CPU
 		break;
 	case 0xFF05: 
+		if (overflowDelay > 0) overflowDelay = 0;
 		tima = val;
 		break;
 	case 0xFF06: 
@@ -67,6 +85,7 @@ void Timer::Write(Address addr, uint8_t val)
 		break;
 	case 0xFF07: 
 		tac = val;
+		std::cout << "Writing to TAC: " << (int)val << "\n";
 		break;
 	}
 }

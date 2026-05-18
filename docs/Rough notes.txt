@@ -303,7 +303,17 @@ On Interrupts:
 3 main parts that control the interrupt system.
 IF register 0xFF0F - The state of the interrupts. "Do I need to handle any interrupts?"
 IE register 0xFFFF - Interrupt table. Enables/Disables whether each interrupt can be called.
-IME flag, internal to cpu - Enables/Disables all interrupts globally.
+IME flag, internal to cpu - Enables/Disables all interrupts globally. IME cannot be read.
+  - IME is only able to be modified by opcode EI, DI, RETI(0xD9), and internally, when interrupts are handled.
+
+What happens when an interrupt is being handled?
+The high level overview is that the PC register jumps to either 0x40, 0x48, 0x50, 0x58, or 0x60.
+The game's developer puts code into these sections. They handle the "WHAT happens" of the interrupts themselves.
+
+Timing specifications of interrupt servicing:
+1) 8 T cycles - nothing happens.
+2) PushWord(pc), 8 T cycles
+3) Set pc register to address of handler. 4 T cycles.
 
 
 0xFF41: STAT register for graphics is a weird one.

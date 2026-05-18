@@ -3,7 +3,9 @@
 #include "Timer.h"
 #include "PPU.h"
 #include "APU.h"
+#include "Joypad.h"
 
+#include <deque>
 #ifdef GAMEBOY_DOCTOR
 // Code for testing via GB doctor
 // LOG BEFORE EXECUTION (Standard requirement)
@@ -30,6 +32,8 @@ std::cout << logBuffer << "\n";
 // As for the opcodes which have additional cycles consumed that are unrelated to bus access, these have to call Clock() within the opcodes.
 // The return value for Tick is still the total T-cycle count for the instruction. The purpose of the Clock() is again, just to keep Timer synced with CPU.
 // CPU ticks timer. Timer is not ticked in the main loop.
+
+
 
 CPU::CPU()
 {
@@ -58,18 +62,82 @@ void CPU::ResetRegisters()
     interruptFlagEnabled = 0x00;
 }
 
+
+void CPU::DumpTrace() const
+{
+    std::cout << "------------vvvv------------\n";
+    for (auto& e : trace)
+    {
+        printf("PC=%04X op=%02X IME=%d IE=%02X IF=%02X TIMA=%02X TMA=%02X TAC=%02X\n", e.pc, e.opcode, e.ime, e.ie, e.if_, e.tima, e.tma, e.tac);
+    }
+    trace.clear();
+}
+
 int CPU::Tick()
 {
-    totalCyclesForInstruction = 0;
-    totalCyclesForInstruction = HandleInterrupts();
+    trace.push_back({ reg.pc, bus->Read(reg.pc), ime, interruptFlagEnabled, interruptFlag, timer->GetTima(), timer->GetTma(), timer->GetTac() });
+    if (trace.size() > 200) trace.pop_front();
 
-    if (totalCyclesForInstruction > 0)
-        return totalCyclesForInstruction;
+
+    bool applyIME = imeNext;
+
+    if (stopped)
+    {
+        if (interruptFlag & 0x10)
+        {
+            stopped = false;
+            interruptFlag &= ~0x10;
+        }
+        else
+        {
+            Clock();
+            return 4;
+        }
+    }
 
     if (halted)
     {
-        return 4;
+        uint8_t pending = interruptFlagEnabled & interruptFlag & 0x1F;
+        if (!pending)
+        {
+            Clock();
+            return 4;
+        }
+
+        if (applyIME && imeNext) { ime = true; imeNext = false; }
+        halted = false;
+        if (ime)
+        {
+            HandleInterrupts2();
+            return 20;
+        }
     }
+
+    totalCyclesForInstruction = 0;
+    if (ime)
+    {
+        HandleInterrupts2();
+        if (totalCyclesForInstruction > 0) return totalCyclesForInstruction;
+    }
+
+    if (haltBug) { --reg.pc; haltBug = false; }
+
+    uint8_t opcode = FetchByte();
+    (this->*instructions[opcode].execute)();
+    totalCyclesForInstruction += instructions[opcode].cycles;
+    
+    if (applyIME && imeNext)
+    {
+        ime = true;
+        imeNext = false;
+    }
+
+    return totalCyclesForInstruction;
+
+    /*
+    trace.push_back({reg.pc, bus->Read(reg.pc), ime, interruptFlagEnabled, interruptFlag, timer->GetTima(), timer->GetTma(), timer->GetTac()});
+    if (trace.size() > 200) trace.pop_front();
+
 
     if (imeNext)
     {
@@ -77,12 +145,79 @@ int CPU::Tick()
         imeNext = false;
     }
 
+    totalCyclesForInstruction = 0;
+    HandleInterrupts(); // increments totalCyclesForInstructions internally
+
+    if (totalCyclesForInstruction > 0)
+        return totalCyclesForInstruction;
+
+    if (halted)
+    {
+        Clock();
+        return 4;
+    }
+
     uint8_t opcode = FetchByte();   // 4 T cycles consumed
 
     (this->*instructions[opcode].execute)();
     totalCyclesForInstruction += instructions[opcode].cycles;
 
+    //timer->Tick(totalCyclesForInstruction);   // Timer controlled entirely by Clock().
     return totalCyclesForInstruction;
+    */
+}
+
+int CPU::HandleInterrupts2()
+{
+    std::cout << "--------------------vvv-------------\n";
+    printf("Before handling: DIV=%04X TIMA=%02X TMA=%02X TAC=%02X overflowDelay=%02X\n", timer->GetDiv(), timer->GetTima(), timer->GetTma(), timer->GetTac(), timer->GetOverflowDelay());
+
+    uint8_t interrupts = interruptFlag & interruptFlagEnabled;
+    if (!interrupts)
+    {
+        std::cout << "No interrupts to handle.\n";
+        return 0;
+    }
+
+    ime = false;
+    imeNext = false;
+
+    int interruptBitToHandle = -1;
+
+    Clock();
+    for (int i = 0; i < 5; ++i)
+    {
+        if (interrupts & (1 << i))
+        {
+            interruptBitToHandle = i;
+            break;
+        }
+    }
+    if (interruptBitToHandle != -1)
+    {
+        interruptFlag &= ~(1 << interruptBitToHandle);
+    }
+    Clock();
+    
+    PushWord(reg.pc);
+    Clock();
+
+    switch (interruptBitToHandle)
+    {
+    case 0: reg.pc = 0x40; break; // VBlank
+    case 1: reg.pc = 0x48; break; // STAT
+    case 2: reg.pc = 0x50; break; // Timer
+    case 3: reg.pc = 0x58; break; // Serial
+    case 4: reg.pc = 0x60; break; // Joypad
+    default:
+        ASSERT(false, "Interrupt Code invalid: %i", interruptBitToHandle);
+    }
+
+
+    printf("After handling: DIV=%04X TIMA=%02X TMA=%02X TAC=%02X overflowDelay=%02X\n", timer->GetDiv(), timer->GetTima(), timer->GetTma(), timer->GetTac(), timer->GetOverflowDelay());
+
+    totalCyclesForInstruction += 20;
+    return 20;
 }
 
 void CPU::RequestInterrupt(InterruptCode bit)
@@ -90,6 +225,72 @@ void CPU::RequestInterrupt(InterruptCode bit)
     ASSERT(static_cast<int>(bit) <= 4, "Interrupt bit Out of Range");
     interruptFlag |= (1 << static_cast<int>(bit));
 }
+
+int CPU::HandleInterrupts()
+{
+    uint8_t interrupts = interruptFlag & interruptFlagEnabled;
+    if (!interrupts)
+        return 0;
+
+    if (stopped)
+    {
+        stopped = false;
+    }
+
+    if (halted)
+    {
+        halted = false;
+    }
+
+    int interruptBitToHandle = -1;
+    if (ime)
+    {
+        ime = false;
+        for (int i = 0; i < 5; ++i)
+        {
+            if (interrupts & (1 << i))
+            {
+                interruptBitToHandle = i;
+                break;
+            }
+        }
+
+        if (interruptBitToHandle != -1)
+        {
+            interruptFlag &= ~(1 << interruptBitToHandle);
+            //printf("INTERRUPT FIRED: Bit %d at PC:%04X\n", interruptBitToHandle, reg.pc);
+        }
+
+        Clock();
+        Clock();
+
+        switch (interruptBitToHandle)
+        {
+        case 0: RST(0x40); break; // VBlank
+        case 1: RST(0x48); break; // STAT
+        case 2: RST(0x50); break; // Timer
+        case 3: RST(0x58); break; // Serial
+        case 4: RST(0x60); break; // Joypad
+        default:
+            ASSERT(false, "Interrupt Code invalid: %i", interruptBitToHandle);
+        }
+
+        Clock();
+
+        totalCyclesForInstruction += 20;
+        //return 20;
+    }
+
+    return 0;
+}
+
+void CPU::Clock()
+{
+    // tick 4 on other components
+    timer->Tick(4);
+}
+
+
 
 void CPU::SaveState(std::ofstream& out)
 {
@@ -130,55 +331,9 @@ void CPU::LoadState(std::ifstream& in)
 }
 
 
-int CPU::HandleInterrupts()
-{
-    uint8_t interrupts = interruptFlag & interruptFlagEnabled;
-    if (halted && interrupts)
-    {
-        halted = false;
-    }
 
-    int interruptBitToHandle = -1;
-    if (ime && interrupts)
-    {
-        ime = false;
-        for (int i = 0; i < 5; ++i)
-        {
-            if (interrupts & (1 << i))
-            {
-                interruptBitToHandle = i;
-                break;
-            }
-        }
 
-        if (interruptBitToHandle != -1)
-        {
-            interruptFlag &= ~(1 << interruptBitToHandle);
-            //printf("INTERRUPT FIRED: Bit %d at PC:%04X\n", interruptBitToHandle, reg.pc);
-        }
-
-        switch (interruptBitToHandle)
-        {
-        case 0: RST(0x40); break; // VBlank
-        case 1: RST(0x48); break; // STAT
-        case 2: RST(0x50); break; // Timer
-        case 3: RST(0x58); break; // Serial
-        case 4: RST(0x60); break; // Joypad
-        default:
-            ASSERT(false, "Interrupt Code invalid: %i", interruptBitToHandle);
-        }
-        return 20;
-    }
-
-    return 0;
-}
-
-void CPU::Clock()
-{
-    // tick 4 on other components
-    timer->Tick(4);
-}
-
+// Instrucitons should interface with these functions instead of doing raw Bus Reads.
 uint8_t CPU::ReadByte(Address addr)
 {
     Clock();
@@ -246,11 +401,6 @@ void CPU::PushWord(uint16_t val)
     reg.sp -= 2;
     WriteWord(reg.sp, val);
 }
-
-
-
-
-
 
 
 
@@ -676,6 +826,8 @@ void CPU::EI()
 
 void CPU::HALT()
 {
+    if (!ime && (interruptFlagEnabled & interruptFlag & 0x1F))
+        haltBug = true;
     halted = true;
 }
 

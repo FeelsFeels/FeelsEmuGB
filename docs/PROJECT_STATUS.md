@@ -67,7 +67,7 @@ The emulator is currently capable of running commercial titles including *Pokém
   - 05-timing_bug: Should corrupt at beginning of first scanline Failed #2
   - 07-timing effect: Failed
   - 08-instr effect: 00000000 INC/DEC rp pattern is wrong Failed #2
-
+- **halt_bug:** 
 #### Mooneye
 
 ### 5. Editor Improvements

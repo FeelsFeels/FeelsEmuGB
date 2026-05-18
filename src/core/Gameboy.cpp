@@ -25,13 +25,13 @@ GameBoy::GameBoy()
 
 GameBoy::~GameBoy()
 {
-	SaveGame();
+	//SaveGame();
 }
 
 void GameBoy::InsertCartridge(std::string filepath)
 {
 	// We save the game's ram first if we already have a game loaded
-	SaveGame();
+	//SaveGame();
 
 	// Clear previous info first
 	bus.RemoveCartridge();
@@ -55,6 +55,8 @@ void GameBoy::InsertCartridge(std::string filepath)
 	timer.ResetRegisters();
 	ppu.ResetRegisters();
 	apu.ResetRegisters();
+	joypad.Reset();
+
 }
 
 // This one is thinking ahead to if I want to deploy on web.
@@ -70,8 +72,10 @@ void GameBoy::InsertCartridge(std::vector<uint8_t>&& romData)
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();
 	cpu.ResetRegisters();
+	timer.ResetRegisters();
 	ppu.ResetRegisters();
 	apu.ResetRegisters();
+	joypad.Reset();
 }
 
 void GameBoy::OpenSaveFile(std::vector<uint8_t>&& ramData)
@@ -79,7 +83,7 @@ void GameBoy::OpenSaveFile(std::vector<uint8_t>&& ramData)
 	if (!cart)
 		return;
 
-	cart->LoadRAM(std::forward<std::vector<uint8_t>>(ramData));
+	//cart->LoadRAM(std::forward<std::vector<uint8_t>>(ramData));
 }
 
 const CartridgeInfo* GameBoy::GetCartInfo() const
@@ -99,10 +103,13 @@ int GameBoy::Update()
 	}
 
 	int cycles = cpu.Tick();
-	//timer.Tick(cycles);
+	//timer.Tick(cycles);	// Timer ticked entirely within CPU using Clock().
 	ppu.Tick(cycles);
 	apu.Tick(cycles);
 
+	//printf("PC: %04X OP: %02X\n", cpu.GetRegisters().pc, bus.Read(cpu.GetRegisters().pc));
+	//printf("PC: %04X OP: %02X %02X\n", cpu.GetRegisters().pc, bus.Read(cpu.GetRegisters().pc), bus.Read(cpu.GetRegisters().pc + 1));
+	
 	return cycles;
 }
 
@@ -172,6 +179,7 @@ void GameBoy::GetChannelVolumes(float& ch1, float& ch2, float& ch3, float& ch4)
 
 void GameBoy::SaveGame()
 {
+	return;
 	if (cart)
 	{
 		auto info = cart->GetInfo();

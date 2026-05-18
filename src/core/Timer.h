@@ -16,6 +16,10 @@ public:
 	void Write(Address addr, uint8_t val);
 
 	uint16_t GetDiv() { return div; }
+	uint8_t GetTima() { return tima; }
+	uint8_t GetTma() { return tma; }
+	uint8_t GetTac() { return tac; }
+	uint8_t GetOverflowDelay() { return overflowDelay; }
 
 	void SaveState(std::ofstream& out);
 	void LoadState(std::ifstream& in);
@@ -29,6 +33,8 @@ private:
 	uint8_t tac { 0 };
 
 	bool previousTargetBitState{ false };
+
+	int overflowDelay = 0;
 
 	// use tac & 0x03 to index into this
 	static constexpr int targetTimerBit[] = { 9,3,5,7 };

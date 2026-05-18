@@ -13,6 +13,7 @@ public:
 	void ButtonUp(Buttons button);
 
 	uint8_t GetInput();
+	uint8_t GetRegister() { return reg; }
 	void Write(uint8_t val);
 
 private:

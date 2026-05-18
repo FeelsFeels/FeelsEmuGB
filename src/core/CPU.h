@@ -9,6 +9,21 @@ class Bus; //Forward decl
 class Timer;
 class PPU;
 class APU;
+class Joypad;
+
+
+struct TraceEntry
+{
+	uint16_t pc;
+	uint8_t  opcode;
+	bool     ime;
+	uint8_t  ie;
+	uint8_t  if_;
+
+	uint8_t  tima;
+	uint8_t  tma;
+	uint8_t  tac;
+};
 
 class CPU
 {
@@ -19,10 +34,12 @@ public:
 	void AttachTimer(Timer* p) { timer = p; }
 	void AttachPPU(PPU* p) { ppu = p; }
 	void AttachAPU(APU* p) { apu = p; }
+	void AttachJoypad(Joypad* p) { joypad = p; }
 
 	void ResetRegisters();	// Call at the start of program, after Boot ROM finishes
 
 	int HandleInterrupts();
+	int HandleInterrupts2();
 	int Tick();
 
 	void RequestInterrupt(InterruptCode bit);
@@ -34,6 +51,8 @@ public:
 
 	void SaveState(std::ofstream& out);
 	void LoadState(std::ifstream& in);
+
+	void DumpTrace() const;
 
 	//Editor 
 	const Registers& GetRegisters() const { return reg; }
@@ -66,6 +85,7 @@ private:
 	Timer* timer;
 	PPU* ppu;
 	APU* apu;
+	Joypad* joypad;
 	
 	Registers reg;
 
@@ -74,6 +94,7 @@ private:
 	bool imeNext = false; // When enabling ime (ei instruction), CPU waits until next cycle to enable.
 	bool halted = false;  // If true, don't fetch opcodes. Wakes on any interrupt
 	bool stopped = false; // Wakes on joypad interrupt.
+	bool haltBug = false;
 
 	uint8_t interruptFlag;		  // 0xFF0F
 	uint8_t interruptFlagEnabled; // 0xFFFF

@@ -537,18 +537,18 @@ void ControlPanel::Draw(GameBoy& gb, ImGuiIO& io)
         // -1.0  -> uncapped
         // 0.5x  -> minimum capped
         // 4.0x  -> maximum capped
-        const float minSpeed = -1.0f;
+        const float minSpeed = 0.0f;
         const float maxSpeed = 4.0f;
         if (ImGui::SliderFloat("Runtime Speed", &speed, minSpeed, maxSpeed, "%.2f"))
         {
             // Round to to 0.5 steps
-            speed = std::round(speed * 4.0f) / 4.0f;
+            speed = std::round(speed * 10.0f) / 10.0f;
 
             if (speed > maxSpeed) speed = maxSpeed;
             if (speed < minSpeed) speed = minSpeed;
         }
 
-        if (speed < 0.0f)
+        if (speed <= 0.0f)
         {
             ImGui::TextColored(ImVec4(1.0f, 0.8f, 0.2f, 1.0f), "Speed: UNCAPPED");
         }
@@ -567,6 +567,10 @@ void ControlPanel::Draw(GameBoy& gb, ImGuiIO& io)
         if (ImGui::Button("Load State"))
         {
             LoadState(gb, io);
+        }
+        if (ImGui::Button("DUMP TRACE"))
+        {
+            gb.GetCPU().DumpTrace();
         }
 
     }
