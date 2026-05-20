@@ -45,7 +45,7 @@ public:
 	const std::string& GetCartPath() const { return pathToCartridge; };
 
 	const Registers& GetCPURegisters() { return cpu.GetRegisters(); }
-	const CPU& GetCPU() { return cpu; }
+	CPU& GetCPU() { return cpu; }
 
 private:
 

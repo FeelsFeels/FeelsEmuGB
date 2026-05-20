@@ -568,9 +568,13 @@ void ControlPanel::Draw(GameBoy& gb, ImGuiIO& io)
         {
             LoadState(gb, io);
         }
-        if (ImGui::Button("DUMP TRACE"))
+        if (ImGui::Button("START TRACE"))
         {
-            gb.GetCPU().DumpTrace();
+            gb.GetCPU().StartTracing("mylog.log");
+        }
+        if (ImGui::Button("STOP TRACE"))
+        {
+            gb.GetCPU().StopTracing();
         }
 
     }

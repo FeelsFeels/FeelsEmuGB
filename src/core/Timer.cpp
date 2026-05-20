@@ -3,6 +3,7 @@
 
 void Timer::ResetRegisters()
 {
+	//div = 0xAB00;
 	div = 0xAB00;
 	tima = 0x00;
 	tma = 0x00;
@@ -23,7 +24,7 @@ void Timer::Tick(int cycles)
 		//++div;
 		cycles -= 4;
 		div += 4;
-		
+
 		// Overflow delay BEFORE edge detection
 		// This gives the interrupt the documented 4 T cycle delay.
 		if (overflowDelay > 0)
@@ -85,7 +86,6 @@ void Timer::Write(Address addr, uint8_t val)
 		break;
 	case 0xFF07: 
 		tac = val;
-		std::cout << "Writing to TAC: " << (int)val << "\n";
 		break;
 	}
 }

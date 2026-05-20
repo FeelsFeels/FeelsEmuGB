@@ -20,6 +20,7 @@ struct TraceEntry
 	uint8_t  ie;
 	uint8_t  if_;
 
+	uint16_t  div;
 	uint8_t  tima;
 	uint8_t  tma;
 	uint8_t  tac;
@@ -29,6 +30,7 @@ class CPU
 {
 public:
 	CPU();
+	~CPU() { StopTracing(); }
 
 	void AttachBus(Bus* p) { bus = p; }
 	void AttachTimer(Timer* p) { timer = p; }
@@ -39,7 +41,6 @@ public:
 	void ResetRegisters();	// Call at the start of program, after Boot ROM finishes
 
 	int HandleInterrupts();
-	int HandleInterrupts2();
 	int Tick();
 
 	void RequestInterrupt(InterruptCode bit);
@@ -52,11 +53,13 @@ public:
 	void SaveState(std::ofstream& out);
 	void LoadState(std::ifstream& in);
 
-	void DumpTrace() const;
-
-	//Editor 
+	// Editor 
 	const Registers& GetRegisters() const { return reg; }
 	bool GetIME() const { return ime; }
+
+	// Logging
+	void StartTracing(const std::string& filename);
+	void StopTracing();
 
 private:
 	struct Instruction
@@ -124,6 +127,18 @@ private:
 	uint16_t PopWord();
 	void PushByte(uint8_t val);
 	void PushWord(uint16_t val);
+
+
+	// Logging
+
+	void LogInstructionTrace(uint16_t currentPc, uint8_t op);
+	void FlushTraceBuffer();
+
+	std::ofstream traceFile;
+	std::vector<TraceEntry> traceBuffer;
+	bool isTracing = false;
+	static constexpr std::size_t TRACE_BUFFER_FLUSH_THRESHOLD = 100000;
+
 
 	// Anything below here, 
 	// just don't look.

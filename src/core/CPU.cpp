@@ -35,6 +35,82 @@ std::cout << logBuffer << "\n";
 
 
 
+void CPU::StartTracing(const std::string & filename)
+{
+    traceFile.open(filename, std::ios::binary | std::ios::out);
+    if (traceFile.is_open())
+    {
+        isTracing = true;
+        traceBuffer.reserve(TRACE_BUFFER_FLUSH_THRESHOLD);
+    }
+}
+
+void CPU::StopTracing()
+{
+    if (isTracing)
+    {
+        FlushTraceBuffer();
+        traceFile.close();
+        isTracing = false;
+        std::cout << "Saved log file\n";
+    }
+}
+
+void CPU::FlushTraceBuffer()
+{
+    if (!traceBuffer.empty() && traceFile.is_open())
+    {
+        std::string batchOutput;
+        batchOutput.reserve(traceBuffer.size() * 80);
+
+        char lineBuffer[128];
+        for (const auto& entry : traceBuffer)
+        {
+            std::snprintf(lineBuffer, sizeof(lineBuffer),
+                "PC: %04X | OP: %02X | IME: %d | IE: %02X | IF: %02X | DIV: %04X | TIMA: %02X | TMA: %02X | TAC: %02X\n",
+                entry.pc, entry.opcode, entry.ime ? 1 : 0,
+                entry.ie, entry.if_, entry.div, entry.tima, entry.tma, entry.tac
+            );
+            batchOutput.append(lineBuffer);
+        }
+
+        traceFile.write(batchOutput.data(), batchOutput.size());
+        traceBuffer.clear();
+    }
+}
+
+void CPU::LogInstructionTrace(uint16_t currentPc, uint8_t op)
+{
+    if (!isTracing) return;
+
+    TraceEntry entry;
+    entry.pc = currentPc;
+    entry.opcode = op;
+    entry.ime = ime;
+
+    // We use a direct array access if available, or a side-effect-free peek 
+    // to avoid triggering extra M-cycles during a trace check.
+    entry.ie = interruptFlagEnabled;
+    entry.if_ = interruptFlag;
+
+    entry.div = timer->GetDiv();
+    entry.tima = timer->GetTima();
+    entry.tma = timer->GetTma();
+    entry.tac = timer->GetTac();
+
+    traceBuffer.push_back(entry);
+
+    if (traceBuffer.size() >= TRACE_BUFFER_FLUSH_THRESHOLD)
+    {
+        FlushTraceBuffer();
+    }
+}
+
+
+
+
+
+
 CPU::CPU()
 {
     RegisterInstructions();
@@ -62,22 +138,9 @@ void CPU::ResetRegisters()
     interruptFlagEnabled = 0x00;
 }
 
-
-void CPU::DumpTrace() const
-{
-    std::cout << "------------vvvv------------\n";
-    for (auto& e : trace)
-    {
-        printf("PC=%04X op=%02X IME=%d IE=%02X IF=%02X TIMA=%02X TMA=%02X TAC=%02X\n", e.pc, e.opcode, e.ime, e.ie, e.if_, e.tima, e.tma, e.tac);
-    }
-    trace.clear();
-}
-
 int CPU::Tick()
 {
-    trace.push_back({ reg.pc, bus->Read(reg.pc), ime, interruptFlagEnabled, interruptFlag, timer->GetTima(), timer->GetTma(), timer->GetTac() });
-    if (trace.size() > 200) trace.pop_front();
-
+    if(isTracing) LogInstructionTrace(reg.pc, bus->Read(reg.pc));
 
     bool applyIME = imeNext;
 
@@ -108,7 +171,7 @@ int CPU::Tick()
         halted = false;
         if (ime)
         {
-            HandleInterrupts2();
+            HandleInterrupts();
             return 20;
         }
     }
@@ -116,7 +179,7 @@ int CPU::Tick()
     totalCyclesForInstruction = 0;
     if (ime)
     {
-        HandleInterrupts2();
+        HandleInterrupts();
         if (totalCyclesForInstruction > 0) return totalCyclesForInstruction;
     }
 
@@ -134,48 +197,13 @@ int CPU::Tick()
 
     return totalCyclesForInstruction;
 
-    /*
-    trace.push_back({reg.pc, bus->Read(reg.pc), ime, interruptFlagEnabled, interruptFlag, timer->GetTima(), timer->GetTma(), timer->GetTac()});
-    if (trace.size() > 200) trace.pop_front();
-
-
-    if (imeNext)
-    {
-        ime = true;
-        imeNext = false;
-    }
-
-    totalCyclesForInstruction = 0;
-    HandleInterrupts(); // increments totalCyclesForInstructions internally
-
-    if (totalCyclesForInstruction > 0)
-        return totalCyclesForInstruction;
-
-    if (halted)
-    {
-        Clock();
-        return 4;
-    }
-
-    uint8_t opcode = FetchByte();   // 4 T cycles consumed
-
-    (this->*instructions[opcode].execute)();
-    totalCyclesForInstruction += instructions[opcode].cycles;
-
-    //timer->Tick(totalCyclesForInstruction);   // Timer controlled entirely by Clock().
-    return totalCyclesForInstruction;
-    */
 }
 
-int CPU::HandleInterrupts2()
+int CPU::HandleInterrupts()
 {
-    std::cout << "--------------------vvv-------------\n";
-    printf("Before handling: DIV=%04X TIMA=%02X TMA=%02X TAC=%02X overflowDelay=%02X\n", timer->GetDiv(), timer->GetTima(), timer->GetTma(), timer->GetTac(), timer->GetOverflowDelay());
-
     uint8_t interrupts = interruptFlag & interruptFlagEnabled;
     if (!interrupts)
     {
-        std::cout << "No interrupts to handle.\n";
         return 0;
     }
 
@@ -213,9 +241,6 @@ int CPU::HandleInterrupts2()
         ASSERT(false, "Interrupt Code invalid: %i", interruptBitToHandle);
     }
 
-
-    printf("After handling: DIV=%04X TIMA=%02X TMA=%02X TAC=%02X overflowDelay=%02X\n", timer->GetDiv(), timer->GetTima(), timer->GetTma(), timer->GetTac(), timer->GetOverflowDelay());
-
     totalCyclesForInstruction += 20;
     return 20;
 }
@@ -224,64 +249,6 @@ void CPU::RequestInterrupt(InterruptCode bit)
 {
     ASSERT(static_cast<int>(bit) <= 4, "Interrupt bit Out of Range");
     interruptFlag |= (1 << static_cast<int>(bit));
-}
-
-int CPU::HandleInterrupts()
-{
-    uint8_t interrupts = interruptFlag & interruptFlagEnabled;
-    if (!interrupts)
-        return 0;
-
-    if (stopped)
-    {
-        stopped = false;
-    }
-
-    if (halted)
-    {
-        halted = false;
-    }
-
-    int interruptBitToHandle = -1;
-    if (ime)
-    {
-        ime = false;
-        for (int i = 0; i < 5; ++i)
-        {
-            if (interrupts & (1 << i))
-            {
-                interruptBitToHandle = i;
-                break;
-            }
-        }
-
-        if (interruptBitToHandle != -1)
-        {
-            interruptFlag &= ~(1 << interruptBitToHandle);
-            //printf("INTERRUPT FIRED: Bit %d at PC:%04X\n", interruptBitToHandle, reg.pc);
-        }
-
-        Clock();
-        Clock();
-
-        switch (interruptBitToHandle)
-        {
-        case 0: RST(0x40); break; // VBlank
-        case 1: RST(0x48); break; // STAT
-        case 2: RST(0x50); break; // Timer
-        case 3: RST(0x58); break; // Serial
-        case 4: RST(0x60); break; // Joypad
-        default:
-            ASSERT(false, "Interrupt Code invalid: %i", interruptBitToHandle);
-        }
-
-        Clock();
-
-        totalCyclesForInstruction += 20;
-        //return 20;
-    }
-
-    return 0;
 }
 
 void CPU::Clock()
@@ -864,7 +831,7 @@ void CPU::DAA()
 void CPU::STOP()
 {
     stopped = true;
-    FetchByte(); // 
+    FetchByte();
     bus->Write(0xFF04, 0);  // Internal hardware side effect, skip clocking cycles.
     //WriteByte(0xFF04, 0);
 }

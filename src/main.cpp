@@ -278,9 +278,7 @@ int main(int argc, char* argv[])
     // App objects
     // -------------------------------------------------------------------------
     g_app.gameboy = new GameBoy();
-    g_app.gameboy->SetAudioSampleRate(
-        static_cast<float>(GBHardWare::MASTER_CLOCK) /
-        static_cast<float>(GBSettings::DEVICE_AUDIO_OUTPUT_RATE));
+    g_app.gameboy->SetAudioSampleRate(static_cast<float>(GBHardWare::MASTER_CLOCK) /static_cast<float>(GBSettings::DEVICE_AUDIO_OUTPUT_RATE));
 
     g_app.renderer = new Renderer();
     g_app.renderer->Init();
@@ -302,6 +300,9 @@ int main(int argc, char* argv[])
     });
     emscripten_set_main_loop(EmscriptenLoopCallback, 0, 1);
 #else
+    
+    //g_app.gameboy->GetCPU().StartTracing("./mylog.log");
+
     while (!g_app.done)
         LoopIteration();
 #endif
@@ -309,6 +310,8 @@ int main(int argc, char* argv[])
     // -------------------------------------------------------------------------
     // Cleanup
     // -------------------------------------------------------------------------
+    g_app.gameboy->GetCPU().StopTracing();
+
     delete g_app.gameboy;
     delete g_app.renderer;
     delete g_app.editor;

@@ -134,8 +134,6 @@ uint8_t Bus::Read(Address addr)
 
 void Bus::Write(Address addr, uint8_t data)
 {
-	if (addr == 0xFFFF)
-		printf("IE write: %02X at PC=%04X\n", data, cpu->GetRegisters().pc);
 	ASSERT(cartridge, "No cartridge in MMU!");
 
 
