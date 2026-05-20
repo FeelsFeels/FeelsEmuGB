@@ -367,7 +367,7 @@ void CPU::OP_1E() { LD_r8_n8(reg.e, FetchByte()); }
 void CPU::OP_1F() { RR(reg.a); reg.SetZ(false); } // RRA
 
 // --- 0x20 - 0x2F (CONDITIONALS WITH PENALTIES) ---
-void CPU::OP_20() { int8_t off = (int8_t)FetchByte(); if (!reg.GetZ()) JR(off); else totalCyclesForInstruction -= 4; } // JR NZ
+void CPU::OP_20() { int8_t off = (int8_t)FetchByte(); if (!reg.GetZ()) { Clock(); JR(off); } else totalCyclesForInstruction -= 4; } // JR NZ
 void CPU::OP_21() { reg.hl = FetchWord(); } // LD HL, n16
 void CPU::OP_22() { WriteByte(reg.hl,reg.a); reg.hl++; } // LD (HL+), A
 void CPU::OP_23() { Clock(); reg.hl++; } // INC HL
@@ -376,7 +376,7 @@ void CPU::OP_25() { DEC_r8(reg.h); }
 void CPU::OP_26() { LD_r8_n8(reg.h, FetchByte()); }
 void CPU::OP_27() { DAA(); }
 
-void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) { JR(off); Clock(); } else totalCyclesForInstruction -= 4; } // JR Z
+void CPU::OP_28() { int8_t off = (int8_t)FetchByte(); if (reg.GetZ()) { Clock(); JR(off);  } else totalCyclesForInstruction -= 4; } // JR Z
 void CPU::OP_29() { Clock(); ADD_HL(reg.hl); }
 void CPU::OP_2A() { LD_r8_addr(reg.a, reg.hl); reg.hl++; } // LD A, (HL+)
 void CPU::OP_2B() { Clock(); reg.hl--; } // DEC HL
@@ -586,7 +586,7 @@ void CPU::OP_BF() { CMP(reg.a); }
 void CPU::OP_C0() { Clock(); if (!reg.GetZ()) { RET(); Clock(); } else totalCyclesForInstruction -= 12; } // RET NZ: 20 -> 8
 void CPU::OP_C1() { reg.bc = PopWord(); } // POP BC
 void CPU::OP_C2() { uint16_t addr = FetchWord(); if (!reg.GetZ()) { Clock(); JP(addr); } else totalCyclesForInstruction -= 4; } // JP NZ: 16 -> 12
-void CPU::OP_C3() { JP(FetchWord()); } // JP a16
+void CPU::OP_C3() { JP(FetchWord()); Clock(); } // JP a16
 void CPU::OP_C4() { uint16_t addr = FetchWord(); if (!reg.GetZ()) { Clock(); CALL(addr); } else totalCyclesForInstruction -= 12; } // CALL NZ: 24 -> 12
 void CPU::OP_C5() { Clock(); PushWord(reg.bc); } // PUSH BC
 void CPU::OP_C6() { ADD(FetchByte()); }
@@ -695,7 +695,7 @@ void CPU::OP_CB()
 
     uint8_t reg_idx = cb_op & 0x07;
     uint8_t group = (cb_op >> 6) & 0x03;  // 00,01,10,11
-    uint8_t op_idx = (cb_op >> 3) & 0x07;  // within group
+    uint8_t op_idx = (cb_op >> 3) & 0x07; // within group
 
     // Read
     uint8_t val;
@@ -705,36 +705,36 @@ void CPU::OP_CB()
         val = GetReg(reg_idx);
 
     // Execute
-    if (group == 0)                       // shifts/rotates
+    if (group == 0) // shifts/rotates
     {
         switch (op_idx)
         {
-        case 0: { bool c = val & 0x80; val = (val << 1) | c; reg.SetC(c); break; }           // RLC
-        case 1: { bool c = val & 0x01; val = (val >> 1) | (c ? 0x80 : 0); reg.SetC(c); break; }  // RRC
-        case 2: { bool c = val & 0x80; val = (val << 1) | reg.GetC(); reg.SetC(c); break; }  // RL
+        case 0: { bool c = val & 0x80; val = (val << 1) | c; reg.SetC(c); break; } // RLC
+        case 1: { bool c = val & 0x01; val = (val >> 1) | (c ? 0x80 : 0); reg.SetC(c); break; } // RRC
+        case 2: { bool c = val & 0x80; val = (val << 1) | reg.GetC(); reg.SetC(c); break; } // RL
         case 3: { bool c = val & 0x01; val = (val >> 1) | (reg.GetC() ? 0x80 : 0); reg.SetC(c); break; } // RR
-        case 4: { bool c = val & 0x80; val = val << 1; reg.SetC(c); break; }               // SLA
-        case 5: { bool c = val & 0x01; val = (val >> 1) | (val & 0x80); reg.SetC(c); break; }  // SRA
-        case 6: { val = (val << 4) | (val >> 4); reg.SetC(0); break; }                     // SWAP
-        case 7: { bool c = val & 0x01; val = val >> 1; reg.SetC(c); break; }               // SRL
+        case 4: { bool c = val & 0x80; val = val << 1; reg.SetC(c); break; } // SLA
+        case 5: { bool c = val & 0x01; val = (val >> 1) | (val & 0x80); reg.SetC(c); break; } // SRA
+        case 6: { val = (val << 4) | (val >> 4); reg.SetC(0); break; } // SWAP
+        case 7: { bool c = val & 0x01; val = val >> 1; reg.SetC(c); break; } // SRL
         }
         reg.SetZ(val == 0); reg.SetN(0); reg.SetH(0);
     }
-    else if (group == 1)                  // BIT - no writeback
+    else if (group == 1) // BIT - no writeback
     {
         reg.SetZ(!((val >> op_idx) & 1));
         reg.SetN(0);
         reg.SetH(1);
-        return;                           // skip writeback
+        return; // skip writeback
     }
-    else if (group == 2)                  // RES
+    else if (group == 2) // RES
         val &= ~(1 << op_idx);
-    else                                  // SET
+    else                 // SET
         val |= (1 << op_idx);
 
     // Writeback
     if (reg_idx == 6)
-        WriteByte(reg.hl, val);           // M4 - clocks automatically
+        WriteByte(reg.hl, val); // M4
     else
         SetReg(reg_idx, val);
 }

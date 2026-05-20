@@ -5,7 +5,6 @@
 #include "APU.h"
 #include "Joypad.h"
 
-#include <deque>
 #ifdef GAMEBOY_DOCTOR
 // Code for testing via GB doctor
 // LOG BEFORE EXECUTION (Standard requirement)
