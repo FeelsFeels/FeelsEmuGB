@@ -25,13 +25,13 @@ GameBoy::GameBoy()
 
 GameBoy::~GameBoy()
 {
-	//SaveGame();
+	SaveGame();
 }
 
 void GameBoy::InsertCartridge(std::string filepath)
 {
 	// We save the game's ram first if we already have a game loaded
-	//SaveGame();
+	SaveGame();
 
 	// Clear previous info first
 	bus.RemoveCartridge();
@@ -83,7 +83,7 @@ void GameBoy::OpenSaveFile(std::vector<uint8_t>&& ramData)
 	if (!cart)
 		return;
 
-	//cart->LoadRAM(std::forward<std::vector<uint8_t>>(ramData));
+	cart->LoadRAM(std::forward<std::vector<uint8_t>>(ramData));
 }
 
 const CartridgeInfo* GameBoy::GetCartInfo() const

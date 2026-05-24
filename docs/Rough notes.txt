@@ -194,8 +194,10 @@ For gameboy input, if bit == 0, button is down. Same goes for the "Selector"
 
 On Graphics:
 VRAM Structure:
-Tile Data - stored in 0x8000-0x97FF, in two "blocks" or "addressing modes".
-  0x8000-0x8FFF / 0x8800-0x97FF
+Tile Data - stored in 0x8000-0x97FF, in three "blocks", but two addressing modes.
+  0x8000-0x8FFF / 0x8800-0x8FFF / 0x9000-0x9FFF.
+                     shared          BG/Window only 
+
 Tile Maps - stored in 0x9800-0x9FFF. Two blocks of 32x32 grids(0x9800-0x9BFF and 0x9C00-0x9FFF). This is "Which tiles to display where"
 
 https://www.huderlem.com/demos/gameboy2bpp.html
@@ -228,6 +230,8 @@ uint8_t wx;   // 0xFF4B Window position X
 
 
 Background:
+Map 0: 0x9800 - 0x9BFF (32 x 32 Tiles. One byte each tile.)
+Map 1: 0x9C00 - 0x9FFF
 The Gameboy screen is only 160x144. but the background is a 256x256 map (32 tiles * 8 pixels = 256). 
 Tiles only contain references to the tiles in VRAM.
 But each tile in the map can only store values of 0-255, while VRAM can store 384 tiles.
@@ -242,6 +246,7 @@ Window has the same tilemap choosing behaviour, at bit 6 of LCDC.
 The bytes in the tilemap is just an index pointing to the tile data.
 
 Window:
+Also has a 32x32 grid of tiles, just like the background.
 wy and wx specify the Window's top-left pixel, but wx is + 7. namely wx=7, wy=0 is top left.
 Windows are frequently used for immovable ui, like healthbar at the bottom of kirby.
 

@@ -58,7 +58,7 @@ The emulator is currently capable of running commercial titles including *Pokém
   - 11-regs after power: Powering off shouldn't affect NR41 Failed #4
   - 12-wave write while on
 - **instr_timing:** Passed
-- **interrupt_time:** 00 00 00 00 08 0D 00 00 00 00 08 0D 7F8F4AAF Failed
+- **interrupt_time:** 00 00 00 00 08 0D 00 00 00 00 08 0D 7F8F4AAF Failed (Which is actually a pass! On DMG mode.)
 - **mem_timing:** Passed
 - **oam_bug:** 
   - 01-lcd sync: Turning LCD on starts too late in scanline Failed #2
@@ -69,6 +69,13 @@ The emulator is currently capable of running commercial titles including *Pokém
   - 08-instr effect: 00000000 INC/DEC rp pattern is wrong Failed #2
 - **halt_bug:** 
 #### Mooneye
+
+
+#### Acid2
+- Eye whites left half wrong: Object to background Priority (bit 7)
+- Eye displayed instead of right chin: Window internal line counter
+- Right mole visible: Object Priority Same X Coordinate
+- 10 object per line limit
 
 ### 5. Editor Improvements
 - **Sprite Palette Editor:** Very cool.

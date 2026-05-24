@@ -14,6 +14,27 @@ enum PPUMode : uint8_t
 	DRAWING	 = 3
 };
 
+struct OAMObject
+{
+	uint8_t yPos;
+	uint8_t xPos;
+	uint8_t tileIndex;
+	uint8_t attributes;
+};
+struct OAMPixel
+{
+	uint8_t colorIndex;
+	uint8_t finalColorIndex; // Post palette adjustment
+	uint8_t priority;
+};
+
+struct ScanlineSprites
+{
+	std::array<OAMObject, 10> sprites;
+	uint8_t count = 0;
+};
+
+
 class PPU
 {
 public:
@@ -43,6 +64,9 @@ private:
 	void RenderScanlineToBuffer();
 	void RenderSprites();
 	void UpdateSTATInterrupt();
+	
+	void RenderScanlineToBuffer2();
+	void RenderSprites2();
 
 	Bus* bus;
 
@@ -56,13 +80,22 @@ private:
 	uint8_t stat;  // 0xFF41 LCD status
 	uint8_t scy;   // 0xFF42 Viewport Y position
 	uint8_t scx;   // 0xFF43 Viewport X position
-	uint8_t ly;    // 0xFF44 LCD Y coordinate
+	uint8_t ly;    // 0xFF44 LCD Y coordinate (Which line the PPU is drawing to)
 	uint8_t lyc;   // 0xFF45 LY compare
-	uint8_t bgp;   // 0xFF47 BD palette data
+	uint8_t bgp;   // 0xFF47 BD palette data (DMG only)
 	uint8_t obp0;  // 0xFF48 Object Palettes
 	uint8_t obp1;  // 0xFF49 Object Palettes
 	uint8_t wy;    // 0xFF4A Window Y Pos
 	uint8_t wx;    // 0xFF4B Window X Pos
+
+	bool windowYCondition = false;
+	uint8_t windowRowsDrawn = 0;
+
+	// Internal drawing resolution
+	std::array<uint8_t, 160> bgColorIndex;
+	std::array<uint8_t, 160> bgPriority;
+	std::array<OAMPixel, 160> spritePixels;
+	ScanlineSprites scanlineSprites;
 
 	PPUMode mode;
 	bool prevStatInterruptSignal = false;
