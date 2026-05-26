@@ -33,7 +33,7 @@ The emulator is currently capable of running commercial titles including *Pokém
 
 ### 2. MBC
 - **MBC3 RTC:** Real Time Clock not done.
-- **MBC5:** Implemented, but need to implement CGB to test more.
+- **MBC5:** Implemented, but need to test more.
 
 ### 3. Accuracy Improvements
 - **OAM DMA:** Currently instantaneous. Should block CPU for ~160 microseconds.
@@ -71,11 +71,8 @@ The emulator is currently capable of running commercial titles including *Pokém
 #### Mooneye
 
 
-#### Acid2
-- Eye whites left half wrong: Object to background Priority (bit 7)
-- Eye displayed instead of right chin: Window internal line counter
-- Right mole visible: Object Priority Same X Coordinate
-- 10 object per line limit
+#### Graphics
+- **dmg_acid2:** Passed.
 
 ### 5. Editor Improvements
 - **Sprite Palette Editor:** Very cool.
@@ -84,20 +81,20 @@ The emulator is currently capable of running commercial titles including *Pokém
 ---
 
 ## 🐞 Known Quirks / Bugs
-1.  **Sprite Limits:** The 10-sprites-per-line limit is not implemented (visuals might be *too* perfect compared to real hardware).
 2.  **CGB Mode:** CGB Flags are detected, but CGB-specific registers (VRAM banking, Palette RAM) are ignored. Games play in DMG (Monochrome) mode.
 3.  **ROM Loading:** Hardcodey implementation. All roms have to be in roms/ folder. roms/ folder has to exist.
 
 ---
 
 ## 💭 Dreams and thoughts and admissions
-1.  **Architecture:** Currently rendered entirely via imgui textures. Not feasible for the future, if I want to "ship it". The dream is to try something like Emscripten to compile it and host it on the web.  
+1. **I wanna make my own GB/GBC game!!!! :** Then I can replace the testroms folder with MY GAME.
+
+2.  **Architecture:** Currently rendered entirely via imgui textures. Not feasible for the future, if I want to "ship it". The dream is to try something like Emscripten to compile it and host it on the web.  
 Need to find a better way to display UI along with the actual game itself.  
 
-2.  **Features:** I want to implement the link cable. Local link cable should be possible, but I want to try to make it work over the network as well, somehow.  
+3.  **Features:** I want to implement the link cable. Local link cable should be possible, but I want to try to make it work over the network as well, somehow.  
 I also think it'll be cool if I had something like a split screen play with your friend over the web kinda thing. I feel it'll be really cool for the purposes of speedrunning challenges. That's a challenge for another day though.  
 I played with DeSmuME once, and I was so impressed with how many debugging features they had. I want to try that too...  
 Also want to make a tracker for the GB audio system. Would be fun.  
 
-3. **I wanna make my own GB/GBC game!!!! :** Then I can replace the testroms folder with MY GAME.
 ---

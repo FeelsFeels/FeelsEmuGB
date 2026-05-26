@@ -12,7 +12,7 @@ RAM Saving ✅
 Audio ✅  
 Compiling to Web ✅  
 GBC Support  
-Accuracy Improvements  
+Accuracy Improvements (check docs/PROJECT_STATUS.md)  
 
 
 To do list - Editor features  
