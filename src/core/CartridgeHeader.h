@@ -302,7 +302,6 @@ struct CartridgeInfo
 
     // Nice to have. Might support next time.
     /*
-    bool cgbFlag;                 // 0x0143 (True if Color GB supported)
     bool sgbFlag;                 // 0x0146 (True if Super GB supported)
     Destination destination;      // 0x014A (Japan vs Overseas)
     uint8_t version;              // 0x014C (Mask ROM version)

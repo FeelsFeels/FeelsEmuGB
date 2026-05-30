@@ -20,10 +20,13 @@ struct TraceEntry
 	uint8_t  ie;
 	uint8_t  if_;
 
-	uint16_t  div;
+	uint16_t div;
 	uint8_t  tima;
 	uint8_t  tma;
 	uint8_t  tac;
+
+	uint8_t  operandCount;   // 0, 1, or 2
+	uint16_t operand;        // lo byte = operand[0], hi byte = operand[1]
 };
 
 class CPU

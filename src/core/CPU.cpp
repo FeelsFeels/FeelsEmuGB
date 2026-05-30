@@ -18,7 +18,7 @@ for (int i = 0; i < 4; i++)
 }
 
 char logBuffer[100];
-sprintf(logBuffer, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02X SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X",
+sprintf(logBuffer, "A:%02X F:%02X B:%02X C:%02X D:%02X E:%02X H:%02X L:%02sssX SP:%04X PC:%04X PCMEM:%02X,%02X,%02X,%02X",
     reg.a, reg.f, reg.b, reg.c, reg.d, reg.e, reg.h, reg.l, reg.sp, reg.pc,
     pcmem[0], pcmem[1], pcmem[2], pcmem[3]
 );
@@ -31,6 +31,37 @@ std::cout << logBuffer << "\n";
 // As for the opcodes which have additional cycles consumed that are unrelated to bus access, these have to call Clock() within the opcodes.
 // The return value for Tick is still the total T-cycle count for the instruction. The purpose of the Clock() is again, just to keep Timer synced with CPU.
 // CPU ticks timer. Timer is not ticked in the main loop.
+
+
+static constexpr uint8_t kOperandBytes[256] =
+{
+    // 0x00–0x0F
+    0, 2, 0, 0,  0, 0, 1, 0,  2, 0, 0, 0,  0, 0, 1, 0,
+    // 0x10–0x1F
+    0, 2, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  0, 0, 1, 0,
+    // 0x20–0x2F
+    1, 2, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  0, 0, 1, 0,
+    // 0x30–0x3F
+    1, 2, 0, 0,  0, 0, 1, 0,  1, 0, 0, 0,  0, 0, 1, 0,
+    // 0x40–0x7F  (LD r,r / HALT — all 0)
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    // 0x80–0xBF  (ALU r — all 0)
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,  0, 0, 0, 0,
+    // 0xC0–0xCF
+    0, 0, 2, 2,  2, 0, 1, 0,  0, 0, 2, 1,  2, 2, 1, 0,
+    // 0xD0–0xDF
+    0, 0, 2, 0,  2, 0, 1, 0,  0, 0, 2, 0,  2, 0, 1, 0,
+    // 0xE0–0xEF
+    1, 0, 0, 0,  0, 0, 1, 0,  1, 0, 2, 0,  0, 0, 1, 0,
+    // 0xF0–0xFF
+    1, 0, 0, 0,  0, 0, 1, 0,  1, 0, 2, 0,  0, 0, 1, 0,
+};
 
 
 
@@ -66,9 +97,9 @@ void CPU::FlushTraceBuffer()
         for (const auto& entry : traceBuffer)
         {
             std::snprintf(lineBuffer, sizeof(lineBuffer),
-                "PC: %04X | OP: %02X | IME: %d | IE: %02X | IF: %02X | DIV: %04X | TIMA: %02X | TMA: %02X | TAC: %02X\n",
+                "PC: %04X | OP: %02X | IME: %d | IE: %02X | IF: %02X | DIV: %04X | TIMA: %02X | TMA: %02X | TAC: %02X | OPCount: %d | NextOP: %04X\n",
                 entry.pc, entry.opcode, entry.ime ? 1 : 0,
-                entry.ie, entry.if_, entry.div, entry.tima, entry.tma, entry.tac
+                entry.ie, entry.if_, entry.div, entry.tima, entry.tma, entry.tac, entry.operandCount, entry.operand
             );
             batchOutput.append(lineBuffer);
         }
@@ -86,23 +117,28 @@ void CPU::LogInstructionTrace(uint16_t currentPc, uint8_t op)
     entry.pc = currentPc;
     entry.opcode = op;
     entry.ime = ime;
-
-    // We use a direct array access if available, or a side-effect-free peek 
-    // to avoid triggering extra M-cycles during a trace check.
     entry.ie = interruptFlagEnabled;
     entry.if_ = interruptFlag;
-
     entry.div = timer->GetDiv();
     entry.tima = timer->GetTima();
     entry.tma = timer->GetTma();
     entry.tac = timer->GetTac();
 
+    const uint8_t count = kOperandBytes[op];
+    entry.operandCount = count;
+    entry.operand = 0;
+
+    // Peek at operand bytes without side effects.
+    // Assumes you have a side-effect-free bus read (e.g. mmu->Peek).
+    if (count >= 1)
+        entry.operand = bus->Read(currentPc+1);
+    if (count == 2)
+        entry.operand |= static_cast<uint16_t>(bus->Read(currentPc + 2)) << 8;
+
     traceBuffer.push_back(entry);
 
     if (traceBuffer.size() >= TRACE_BUFFER_FLUSH_THRESHOLD)
-    {
         FlushTraceBuffer();
-    }
 }
 
 
