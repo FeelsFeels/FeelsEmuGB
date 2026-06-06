@@ -3,6 +3,8 @@
 struct GBSettings
 {
     static constexpr int CYCLES_PER_FRAME = 70224;
+    static constexpr int CYCLES_PER_FRAME_DMG = 70224;
+    static constexpr int CYCLES_PER_FRAME_CGB = 140448;
     static float TARGET_FRAME_TIME; // 1000.0f / 59.7f = ~16.74ms
     static float RUNTIME_SPEED;
 

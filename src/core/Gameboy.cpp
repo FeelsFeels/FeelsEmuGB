@@ -49,6 +49,11 @@ void GameBoy::InsertCartridge(std::string filepath)
 	cart = std::move(Cartridge::CreateCartridge(std::move(romData), filepath));
 	cart->LoadRAMFromFilepath(filepath);
 
+	cgbMode = cart->GetInfo()->cgbFlag;
+	bus.SetCGBMode(cgbMode);
+	cpu.SetCGBMode(cgbMode);
+	ppu.SetCGBMode(cgbMode);
+
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();
 	cpu.ResetRegisters();
@@ -68,6 +73,11 @@ void GameBoy::InsertCartridge(std::vector<uint8_t>&& romData)
 	pathToCartridge.clear();
 
 	cart = std::move(Cartridge::CreateCartridge(std::move(romData)));
+
+	cgbMode = cart->GetInfo()->cgbFlag;
+	bus.SetCGBMode(cgbMode);
+	cpu.SetCGBMode(cgbMode);
+	ppu.SetCGBMode(cgbMode);
 
 	bus.AttachCartridge(cart.get());
 	bus.RunBootRom();
@@ -102,13 +112,15 @@ int GameBoy::Update()
 		return 0;
 	}
 
+
 	int cycles = cpu.Tick();
 	//timer.Tick(cycles);	// Timer ticked entirely within CPU using Clock().
+	
+	// Only timer and cpu ticks double.
+	//int ppuCycles = cgbMode ? cycles / 2 : cycles;
+
 	ppu.Tick(cycles);
 	apu.Tick(cycles);
-
-	//printf("PC: %04X OP: %02X\n", cpu.GetRegisters().pc, bus.Read(cpu.GetRegisters().pc));
-	//printf("PC: %04X OP: %02X %02X\n", cpu.GetRegisters().pc, bus.Read(cpu.GetRegisters().pc), bus.Read(cpu.GetRegisters().pc + 1));
 	
 	return cycles;
 }

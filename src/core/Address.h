@@ -35,6 +35,7 @@ static constexpr AddressRange addrCart{ 0x0000, 0x7FFF };
 static constexpr AddressRange addrVRAM{ 0x8000, 0x9FFF };
 static constexpr AddressRange addrExtRAM{ 0xA000, 0xBFFF };
 static constexpr AddressRange addrWRAM{ 0xC000, 0xDFFF };
+static constexpr AddressRange addrCgbWramBank{ 0xD000, 0xDFFF };
 static constexpr AddressRange addrEchoRAM{ 0xE000, 0xFDFF };	// Mirror to C000-DDFF
 static constexpr AddressRange addrOAM{ 0xFE00, 0xFE9F };
 static constexpr AddressRange addrUnused{ 0xFEA0, 0xFEFF };
@@ -118,6 +119,7 @@ static constexpr Address addrDMA{ 0xFF46 };
 static constexpr Address addrBGP{ 0xFF47 };
 static constexpr Address addrOBP0{ 0xFF48 };
 static constexpr Address addrOBP1{ 0xFF49 };
+static constexpr AddressRange addrCgbPalettes{ 0xFF68, 0xFF6B };
 #pragma endregion
 
 

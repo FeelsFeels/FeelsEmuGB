@@ -5,6 +5,9 @@
 #include "APU.h"
 #include "Joypad.h"
 
+
+// TODO: Eliminate the if/else hell. Simplify it. Carve out ranges, then switch statement.
+
 void Bus::RunBootRom()
 {
 	// Read boot rom, execute instructions
@@ -48,9 +51,15 @@ void Bus::RunBootRom()
 	//Write(0xFF4A, 0x00); // WY
 	//Write(0xFF4B, 0x00); // WX
 	//Write(0xFFFF, 0x00); // IE
+
+	io[0x70] = 0x01;
+	
 	wram.fill(0);
 	hram.fill(0);
 	io.fill(0);
+
+	hdmaActive = false;
+	hdmaHblankActive = false;
 }
 
 uint8_t Bus::Read(Address addr)
@@ -70,19 +79,33 @@ uint8_t Bus::Read(Address addr)
 	{
 		return cartridge->Read(addr); // MBC inside cartridge handles read
 	}
-	else if (addrWRAM.Contains(addr))
+	else if (addr >= 0xC000 && addr <= 0xCFFF)
 	{
-		//if (cgbMode && AddressRange::InRange(0xD000, 0xDFFF, addr))
-		//{
-		//	// Switchable bank 1-7
-		//	ASSERT(false, "CGB unsupported");
-		//}
-
+		// Bank 0 same for both CGB and DMG
 		return wram[addrWRAM.GetOffset(addr)];
+	}
+	else if (addr >= 0xD000 && addr <= 0xDFFF)
+	{
+		if (cgbMode)
+		{
+			uint8_t selectedBank = io[0x70] & 0x07;
+			if (selectedBank == 0)
+				selectedBank = 1;
+
+			Address offset = (selectedBank * 4096) + (addr - 0xD000);
+			return wram[offset];
+		}
+		else
+		{
+			return wram[addrWRAM.GetOffset(addr)];
+		}
 	}
 	else if (addrEchoRAM.Contains(addr))
 	{
-		return wram[addrEchoRAM.GetOffset(addr)];
+		// 0xE000, 0xFDFF mirrors to C000-DDFF
+		//ASSERT(false, "Who is the game dev? Go Fuck yourself. Correction: 'Nintendo prohibits devs from using this memory range', so why the fuck does zelda read here?");
+		return Read(addr - 0x2000);
+		
 	}
 	else if (addrOAM.Contains(addr))
 	{
@@ -113,6 +136,24 @@ uint8_t Bus::Read(Address addr)
 		else if (addrAudioRegisters.Contains(addr))
 		{
 			return apu->Read(addr);
+		}
+		
+		// CGB Stuff, I guess
+		else if (addr == 0xFF4D)
+		{
+			return ((uint8_t)cpu->doubleSpeedMode << 7) | (uint8_t)cpu->preparingSpeedSwitch;
+		}
+		else if (addr == 0xFF4F)
+		{
+			return (uint8_t)ppu->selectedVramBank1 & 0xFF;
+		}
+		else if (addrCgbPalettes.Contains(addr))
+		{
+			ppu->Read(addr);
+		}
+		else if (addr == 0xFF6C)
+		{
+			return ppu->Read(addr);
 		}
 		else
 		{
@@ -149,13 +190,30 @@ void Bus::Write(Address addr, uint8_t data)
 	{
 		cartridge->Write(addr, data);
 	}
-	else if (addrWRAM.Contains(addr))
+	else if (addr >= 0xC000 && addr <= 0xCFFF)
 	{
+		// Bank 0 same for both CGB and DMG
 		wram[addrWRAM.GetOffset(addr)] = data;
+	}
+	else if (addr >= 0xD000 && addr <= 0xDFFF)
+	{
+		if (cgbMode)
+		{
+			uint8_t selectedBank = io[0x70] & 0x07;
+			if (selectedBank == 0)
+				selectedBank = 1;
+
+			Address offset = (selectedBank * 4096) + (addr - 0xD000);
+			wram[offset] = data;
+		}
+		else
+		{
+			wram[addrWRAM.GetOffset(addr)] = data;
+		}
 	}
 	else if (addrEchoRAM.Contains(addr))
 	{
-		wram[addrEchoRAM.GetOffset(addr)] = data;
+		Write(addr - 0x2000, data);
 	}
 	else if (addrOAM.Contains(addr))
 	{
@@ -211,6 +269,48 @@ void Bus::Write(Address addr, uint8_t data)
 			bootRomEnabled = false;
 			return;
 		}
+		
+		// CGB Stuff, I guess
+		else if (addr == 0xFF4D)
+		{
+			uint8_t armed = data & 0x01;
+			io[0x4D] |= armed;
+
+			cpu->PrepareSpeedSwitch(armed);
+
+		}
+		else if (addr == 0xFF4F)
+		{
+			ppu->ChangeVramBank(data & 0x01);
+			io[0x4F] = data & 0x01;
+		}
+		else if (addr == 0xFF55)
+		{
+			io[0x55] = data;
+			if (cgbMode)
+			{
+				if (hdmaHblankActive && !(data & 0x80))
+				{
+					// Cancel HDMATransfer
+					hdmaHblankActive = false;
+				}
+				else
+					HDMATransfer(data);
+			}
+		}
+		else if (addrCgbPalettes.Contains(addr))
+		{
+			ppu->Write(addr, data);
+		}
+		else if (addr == 0xFF6C)
+		{
+			ppu->Write(addr, data);
+		}
+		else if (addr == 0xFF70)
+		{
+			// WRAM bank
+			io[0x70] = data & 0xFF;
+		}
 		else // Fallback for unimplemented io in this range
 		{
 			io[addr & 0x7F] = data;
@@ -232,6 +332,8 @@ void Bus::DMATransfer(uint8_t data)
 	// Destination: $FE00-$FE9F
 	// In other words, 0x100 bytes from source to dest. 
 
+	// TODO: Burn 160 M-cycles. BUT in this period, CPU only can read from HRAM.
+	
 	uint16_t address = data << 8;	// Divided by 0x100
 
 	for (int i = 0; i < 160; i++)
@@ -240,6 +342,57 @@ void Bus::DMATransfer(uint8_t data)
 		ppu->Write(0xFE00 + i, val);
 	}
 }
+
+void Bus::HDMATransfer(uint8_t data)
+{
+	hdmaSrc = io[0x51] << 8 | (io[0x52] & 0xF0);
+	hdmaDst = 0x8000 | ((io[0x53] & 0x1F) << 8) | (io[0x54] & 0xF0);
+	hdmaLength = (io[0x55] & 0x7F) + 1;
+
+	if (data & 0x80)
+	{
+		// Hblank dma
+		hdmaHblankActive = true;
+	}
+	else
+	{
+		// General Purpose DMA
+		// TODO: Burn cycles instead of copying all at once. Disable CPU but not the others.
+		int bytesToCopy = (hdmaLength) * 0x10;
+		for (int i = 0; i < bytesToCopy; ++i)
+			Write(hdmaDst + i, Read(hdmaSrc + i));
+		io[0x55] = 0xFF;
+
+		// 2 Bytes per 4 T Cycles
+		cpu->AddStalledCycles(bytesToCopy * 2);
+	}
+}
+
+// Triggered inside PPU
+void Bus::HBlankTransfer()
+{
+	if (!hdmaHblankActive)
+		return;
+
+	// Copy 0x10 bytes of data each Hblank
+	for (int i = 0; i < 16; ++i)
+		Write(hdmaDst + i, Read(hdmaSrc + i));
+
+	hdmaSrc += 16;
+	hdmaDst += 16;
+	--hdmaLength;
+
+	// Reading from Register FF55 returns the remianing length (divided by 0x10, minus 1)
+	io[0x55] = hdmaLength & 0x7F;
+	if (hdmaLength <= 0)
+	{
+		hdmaHblankActive = false;
+		io[0x55] = 0xFF;
+	}
+	cpu->AddStalledCycles(32);
+}
+
+
 
 void Bus::RequestInterrupt(InterruptCode bit)
 {

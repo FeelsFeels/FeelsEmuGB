@@ -36,6 +36,15 @@ PPU (Pixel Processing Unit)
 Cartridge
 APU (Audio)
 
+===========================
+====== Architecture =======
+===========================
+I was being a smartass. But the best way might have been sameboy style after all. Giant ass switch statement.
+Couple the different components tightly. Make them talk to each other easily.
+TODO: Eliminate the if/else inside bus.cpp
+
+
+
 ====================
 ====== NOTES =======
 ====================
@@ -641,3 +650,83 @@ OP_18: JR i8, 12t
     - Internal 4t
 In this case, void CPU::OP_18() { JR((int8_t)FetchByte()); Clock(); }
 The Clock() call accounts for the Internal 4t. Make sure operations are in order.
+
+
+================================================================
+CGB transition
+
+CGB Registers:
+
+>>> New DMA functionality!!! 
+Compared to DMG which only had OAM DMA:
+FF51, FF52: Hi/Low bytes. Address to Source data to copy.
+Accessible addresses from 0000-7FF0, or A000-DFF0. Specifying a source address from VRAM copies garbage.
+Lowest Nibble is ignored, so mask the address with FFF0
+
+FF53, FF54: Hi/Low bytes. Address pointing to destination in VRAM.
+Address between 8000-9FF0
+Lowest Nibble ignored, mask with FFF0 too.
+
+FF55: The activator. Writing to this register starts the transfer.
+Lower 7 bits (0-6) describe the length of the transfer, divided by 0x10, minus 1.
+0x00 transfers (0x00+1) x 0x10 = 0x10 bytes. 0x01 transfers (0x01 + 1) * 0x10 = 0x20 bytes.
+0x7F transfers 0x800, or 2048 bytes.
+
+7th bit indicates Transfer Mode
+General Purpose DMA:
+All data is transferred at once. Program is halted until transfer is done. Once transfer is done, FF55 contains 0xFF.
+
+HBlank DMA:
+Transfers 0x10 Bytes of data each Hblank. No transferral during VBlank. Halt instruction causes tranfer to pause.
+Reading FF55 returns remaining length of length, and FF if transfer is completed.
+Termination of Hblank DMA is possible by writing 0 to the 7th bit.
+
+
+>>> MORE VRAM BANKS!!!
+FF47: Write to this register to change VRAM Banks. Only bit 0 matters.
+
+
+
+>>> SPEED SWITCHING!!! DOUBLE SPEED MODE!!!
+FF4D: Prepare Speed Switch register.
+Set bit 0, to request a speed switch. The speed switch is executed on the next STOP instruction. Bit 0 then is cleared.
+Bit 7, read only, is current speed. 1 being double speed.
+CPU and timer are now double speed. PPU, HDMA transfer to VRAM, APU remain unaffected.
+
+Speed switching itself takes 2050 M-cycles. During this time, DIV does not tick.
+
+>>> Infrared Communications? Is this Nintendo Switch?
+NA
+
+
+
+CGB Graphics:
+Each Color is represented by 2 bytes.
+0-4: Red intensity
+5-9: Green
+10-14: Blue
+Each palette has four colors, just like DMG.
+CGB has 8 palettes each for BG and OBJ.
+
+Palettes:
+FF68: BG color palette
+0-5 bit: Address Specifier. Total of 64 addressable bytes. This is just a "pointer" to where to read/write the BG color palette.
+7 bit: Auto increment Address specifier affter writing to FF69.
+
+FF69: BG color palette data.
+A single byte Read/Write into the internal 64 byte color palette data.
+
+FF6A and FF6B have the same exact functionality as the BG color registers. Just for objects.
+However, just like DMG, color #0 is always transparent.
+
+Recall the two background maps in VRAM:
+Map 0: 0x9800 - 0x9BFF (32 x 32 Tiles. One byte each tile.)
+Map 1: 0x9C00 - 0x9FFF
+VRAM Bank 1 uses these two address spaces as tile attributes instead.
+
+Attributes:
+Bit 7: Priority. 1 = Color indices 1-3 drawn over OBJ. Disregards OBJ priority.
+Bit 6, 5: Y/X Flip
+Bit 3: Bank chooser. 0 or 1.
+Bit 2, 1, 0: Color palette selector: Remember there's 8 palettes.
+

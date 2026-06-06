@@ -20,8 +20,10 @@ public:
 	uint8_t Read(Address addr);
 	void Write(Address addr, uint8_t data);
 	void DMATransfer(uint8_t data);
+	void HDMATransfer(uint8_t data);
+	void HBlankTransfer();
 	void RequestInterrupt(InterruptCode bit);
-
+	void SetCGBMode(bool b) { cgbMode = b; }
 
 	void AttachCartridge(Cartridge* cart) 
 	{ 
@@ -53,11 +55,18 @@ private:
 	Timer* timer;
 	Joypad* joypad;
 
-	bool bootRomEnabled = false;	// TODO: does nothing right now. I never set it true anywhere, nor do any real checks with it.
-
-	std::array<uint8_t, 8192> wram;
+	std::array<uint8_t, 32768> wram;
+	//std::array<uint8_t, 8192> wram;
 	std::array<uint8_t, 127> hram;
-	std::array<uint8_t, 128> io;	// TODO: this is temporary. this is memory for the components i have not yet implemented.
+	std::array<uint8_t, 128> io;	// This is a fallback memory space for the components i have not yet implemented.
 
-	std::string debugString{};
+	bool bootRomEnabled = false;	// TODO: does nothing right now. I never set it true anywhere, nor do any real checks with it.
+	bool cgbMode = false;
+
+
+	int hdmaLength;	// How many more Hblank cycles to finish copying
+	Address hdmaSrc;
+	Address hdmaDst;
+	bool hdmaActive = false;
+	bool hdmaHblankActive = false;
 };

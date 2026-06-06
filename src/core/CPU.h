@@ -40,6 +40,7 @@ public:
 	void AttachPPU(PPU* p) { ppu = p; }
 	void AttachAPU(APU* p) { apu = p; }
 	void AttachJoypad(Joypad* p) { joypad = p; }
+	void SetCGBMode(bool b) { cgbMode = b; }
 
 	void ResetRegisters();	// Call at the start of program, after Boot ROM finishes
 
@@ -53,6 +54,9 @@ public:
 	void SetIF(uint8_t val) { interruptFlag = val; }
 	void SetIE(uint8_t val) { interruptFlagEnabled = val; }
 
+	void AddStalledCycles(int cycles) { stalledCyclesRemaining += cycles; }
+	void PrepareSpeedSwitch(bool b);
+
 	void SaveState(std::ofstream& out);
 	void LoadState(std::ifstream& in);
 
@@ -64,7 +68,7 @@ public:
 	void StartTracing(const std::string& filename);
 	void StopTracing();
 
-private:
+public:
 	struct Instruction
 	{
 		void (CPU::*execute)();
@@ -106,6 +110,30 @@ private:
 	uint8_t interruptFlagEnabled; // 0xFFFF
 
 	
+	// CGB Territory
+	// Stalling the CPU when doing HDMA
+	int stalledCyclesRemaining = 0; // In T cycles
+
+	bool cgbMode = false;
+	bool doubleSpeedMode = false;
+	bool preparingSpeedSwitch = false;
+	bool prepareDoubleSpeedMode = false;
+
+
+
+	/////////////
+	// Logging //
+	/////////////
+	void LogInstructionTrace(uint16_t currentPc, uint8_t op);
+	void FlushTraceBuffer();
+
+	std::ofstream traceFile;
+	std::vector<TraceEntry> traceBuffer;
+	bool isTracing = false;
+	static constexpr std::size_t TRACE_BUFFER_FLUSH_THRESHOLD = 100000;
+
+
+
 	//////////////////////////////////////////
 	// Core Timing and Bus R/W instructions //
 	// Clock() ticks the timer and adds 4 (1 M cycle) to totalCyclesForInstruction
@@ -131,16 +159,6 @@ private:
 	void PushByte(uint8_t val);
 	void PushWord(uint16_t val);
 
-
-	// Logging
-
-	void LogInstructionTrace(uint16_t currentPc, uint8_t op);
-	void FlushTraceBuffer();
-
-	std::ofstream traceFile;
-	std::vector<TraceEntry> traceBuffer;
-	bool isTracing = false;
-	static constexpr std::size_t TRACE_BUFFER_FLUSH_THRESHOLD = 100000;
 
 
 	// Anything below here, 

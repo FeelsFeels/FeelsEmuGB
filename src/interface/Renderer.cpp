@@ -15,21 +15,16 @@ void Renderer::Init()
 GLuint Renderer::CreateTexture(int width, int height)
 {
     GLuint id;
-    // 1. Generate and Bind (Required for WebGL) [cite: 60]
     glGenTextures(1, &id);
     glBindTexture(GL_TEXTURE_2D, id);
 
-    // 2. Allocate storage [cite: 61]
-    // Use glTexImage2D instead of glTextureStorage2D for WebGL compatibility
     glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA, GL_UNSIGNED_BYTE, nullptr);
 
-    // 3. Set parameters on the currently bound texture (GL_TEXTURE_2D) [cite: 61]
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
     glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
 
-    // Unbind to prevent accidental modifications elsewhere
     glBindTexture(GL_TEXTURE_2D, 0);
 
     return id;
@@ -37,13 +32,10 @@ GLuint Renderer::CreateTexture(int width, int height)
 
 void Renderer::UpdateTexture(GLuint textureID, int width, int height, const void* data)
 {
-    // 1. Must bind the texture first [cite: 61]
     glBindTexture(GL_TEXTURE_2D, textureID);
 
-    // 2. Upload using the standard SubImage call [cite: 61]
     glTexSubImage2D(GL_TEXTURE_2D, 0, 0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, data);
 
-    // Unbind
     glBindTexture(GL_TEXTURE_2D, 0);
 }
 

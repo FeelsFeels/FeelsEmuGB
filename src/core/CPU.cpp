@@ -153,17 +153,30 @@ CPU::CPU()
 
 void CPU::ResetRegisters()
 {
-    reg.a = 0x01;
-    reg.f = 0xB0;
-    //reg.SetZ(1); reg.SetN(0); reg.SetH(false); reg.SetC(false); // TODO: H and C dependant on header checksum
-    reg.b = 0x00;
-    reg.c = 0x13;
-    reg.d = 0x00;
-    reg.e = 0xD8;
-    reg.h = 0x01;
-    reg.l = 0x4D;
-    reg.pc = 0x0100;
-    reg.sp = 0xFFFE;
+    if (cgbMode)
+    {
+        reg.a = 0x11; reg.f = 0x80;
+        reg.b = 0x00; reg.c = 0x00;
+        reg.d = 0xFF; reg.e = 0x56;
+        reg.h = 0x00; reg.l = 0x0D;
+        reg.pc = 0x0100; reg.sp = 0xFFFE;
+
+        // mooneye CGB (DMG mode)
+        //reg.a = 0x11; reg.f = 0x80;
+        //reg.b = 0x00; reg.c = 0x00;
+        //reg.d = 0x00; reg.e = 0x08;
+        //reg.h = 0x00; reg.l = 0x7C;
+        //reg.pc = 0x0100; reg.sp = 0xFFFE;
+    }
+    else
+    {
+        reg.a = 0x01; reg.f = 0xB0;
+        //reg.SetZ(1); reg.SetN(0); reg.SetH(false); reg.SetC(false); // TODO: H and C dependant on header checksum
+        reg.b = 0x00; reg.c = 0x13;
+        reg.d = 0x00; reg.e = 0xD8;
+        reg.h = 0x01; reg.l = 0x4D;
+        reg.pc = 0x0100; reg.sp = 0xFFFE;
+    }
 
     ime = false;
     imeNext = false;
@@ -175,6 +188,17 @@ void CPU::ResetRegisters()
 
 int CPU::Tick()
 {
+    if (stalledCyclesRemaining > 0)
+    {
+        int maxCyclesToDrain = doubleSpeedMode ? 2 : 4;
+        int stalledCycles = std::min(stalledCyclesRemaining, maxCyclesToDrain);
+
+        stalledCyclesRemaining -= stalledCycles;
+
+        return doubleSpeedMode ? stalledCycles * 2 : stalledCycles;
+    }
+
+
     if(isTracing) LogInstructionTrace(reg.pc, bus->Read(reg.pc));
 
     bool applyIME = imeNext;
@@ -293,6 +317,12 @@ void CPU::Clock()
 }
 
 
+
+void CPU::PrepareSpeedSwitch(bool b)
+{
+    preparingSpeedSwitch = true;
+    prepareDoubleSpeedMode = b;
+}
 
 void CPU::SaveState(std::ofstream& out)
 {
@@ -865,8 +895,18 @@ void CPU::DAA()
 
 void CPU::STOP()
 {
-    stopped = true;
-    FetchByte();
-    bus->Write(0xFF04, 0);  // Internal hardware side effect, skip clocking cycles.
-    //WriteByte(0xFF04, 0);
+    // TODO: Behaviour: https://gbdev.io/pandocs/Reducing_Power_Consumption.html
+    if (preparingSpeedSwitch)
+    {
+        FetchByte();
+        doubleSpeedMode = !doubleSpeedMode;
+        AddStalledCycles(8200);
+    }
+    else
+    {
+        stopped = true;
+        FetchByte(); // Internal hardware side effect, skip clocking cycles.
+        bus->Write(0xFF04, 0);  // Reset DIV when executing STOP
+        //WriteByte(0xFF04, 0);
+    }
 }

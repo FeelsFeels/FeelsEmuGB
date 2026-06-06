@@ -183,8 +183,6 @@ static void EmscriptenLoopCallback()
 {
     LoopIteration();
 
-    // Emscripten doesn't have a "stop the loop" signal — we cancel it by
-    // throwing a JS exception via emscripten_cancel_main_loop() when done.
     if (g_app.done)
         emscripten_cancel_main_loop();
 }

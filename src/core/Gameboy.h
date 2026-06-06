@@ -60,4 +60,6 @@ private:
 	APU apu;
 	Timer timer;
 	Joypad joypad;
+
+	bool cgbMode = false;
 };
