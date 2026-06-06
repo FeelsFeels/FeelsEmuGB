@@ -57,6 +57,6 @@ build*/
 build_web*/
 
 # So Nintendo doesn't annihilate me
-roms/games
+roms/
 *.sav
 *.state
