@@ -64,7 +64,7 @@ uint8_t Timer::Read(Address addr)
 	case 0xFF04: return div >> 8; break;
 	case 0xFF05: return tima; break;
 	case 0xFF06: return tma; break;
-	case 0xFF07: return tac; break;
+	case 0xFF07: return tac | 0xF8; break;
 	default: return 0xFF; break;
 	}
 

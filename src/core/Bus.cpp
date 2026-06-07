@@ -51,12 +51,14 @@ void Bus::RunBootRom()
 	//Write(0xFF4A, 0x00); // WY
 	//Write(0xFF4B, 0x00); // WX
 	//Write(0xFFFF, 0x00); // IE
-
-	io[0x70] = 0x01;
 	
 	wram.fill(0);
 	hram.fill(0);
 	io.fill(0);
+
+	io[0x4F] = 0xFE;
+	io[0x70] = 0x01;
+	
 
 	hdmaActive = false;
 	hdmaHblankActive = false;
@@ -79,12 +81,11 @@ uint8_t Bus::Read(Address addr)
 	{
 		return cartridge->Read(addr); // MBC inside cartridge handles read
 	}
-	else if (addr >= 0xC000 && addr <= 0xCFFF)
+	else if (addrWRAMBank0.Contains(addr))
 	{
-		// Bank 0 same for both CGB and DMG
 		return wram[addrWRAM.GetOffset(addr)];
 	}
-	else if (addr >= 0xD000 && addr <= 0xDFFF)
+	else if (addrWRAMSwitchable.Contains(addr))
 	{
 		if (cgbMode)
 		{
@@ -117,48 +118,7 @@ uint8_t Bus::Read(Address addr)
 	}
 	else if (addrIO.Contains(addr))
 	{
-		if (addr == 0xFF00)
-		{
-			return joypad->GetInput();
-		}
-		if (addr == 0xFF0F)
-		{
-			return cpu->GetIF();
-		}
-		else if (addr >= 0xFF04 && addr <= 0xFF07)
-		{
-			return timer->Read(addr);
-		}
-		else if (addrIO_LCD_Control.Contains(addr))
-		{
-			return ppu->Read(addr);
-		}
-		else if (addrAudioRegisters.Contains(addr))
-		{
-			return apu->Read(addr);
-		}
-		
-		// CGB Stuff, I guess
-		else if (addr == 0xFF4D)
-		{
-			return ((uint8_t)cpu->doubleSpeedMode << 7) | (uint8_t)cpu->preparingSpeedSwitch;
-		}
-		else if (addr == 0xFF4F)
-		{
-			return (uint8_t)ppu->selectedVramBank1 & 0xFF;
-		}
-		else if (addrCgbPalettes.Contains(addr))
-		{
-			ppu->Read(addr);
-		}
-		else if (addr == 0xFF6C)
-		{
-			return ppu->Read(addr);
-		}
-		else
-		{
-			return io[addrIO.GetOffset(addr)];
-		}
+		return ReadIO(addr);
 	}
 	else if (addrHRAM.Contains(addr))
 	{
@@ -190,12 +150,12 @@ void Bus::Write(Address addr, uint8_t data)
 	{
 		cartridge->Write(addr, data);
 	}
-	else if (addr >= 0xC000 && addr <= 0xCFFF)
+	else if (addrWRAMBank0.Contains(addr))
 	{
 		// Bank 0 same for both CGB and DMG
 		wram[addrWRAM.GetOffset(addr)] = data;
 	}
-	else if (addr >= 0xD000 && addr <= 0xDFFF)
+	else if (addrWRAMSwitchable.Contains(addr))
 	{
 		if (cgbMode)
 		{
@@ -225,96 +185,7 @@ void Bus::Write(Address addr, uint8_t data)
 	}
 	else if (addrIO.Contains(addr))
 	{
-		if (addr == 0xFF02)
-		{
-			io[0x02] = data;
-			// If game starts a transfer with internal clock (bit7=1, bit0=1),
-			// complete immediately: clear bit 7 and raise serial interrupt.
-			// This makes Blargg test ROMs and most serial-using games work without
-			// needing to emulate real serial timing.
-			if ((data & 0x81) == 0x81)
-			{
-				io[0x02] &= ~0x80;              // transfer complete
-				if (cpu) cpu->RequestInterrupt(InterruptCode::SERIAL); // serial interrupt
-			}
-		}
-		else if (addr == addrJoypad)
-		{
-			joypad->Write(data);
-		}
-		else if (addr == addrInterruptFlag)
-		{
-			cpu->SetIF(data);
-			return;
-		}
-		else if (addrTimer.Contains(addr))
-		{
-			timer->Write(addr, data);
-			return;
-		}
-		else if (addr == addrDMATransfer)
-		{
-			DMATransfer(data);
-		}
-		else if (addrIO_LCD_Control.Contains(addr))
-		{
-			ppu->Write(addr, data);
-		}
-		else if (addrAudioRegisters.Contains(addr))
-		{
-			apu->Write(addr, data);
-		}
-		else if (addr == addrBootRomEnable)
-		{
-			bootRomEnabled = false;
-			return;
-		}
-		
-		// CGB Stuff, I guess
-		else if (addr == 0xFF4D)
-		{
-			uint8_t armed = data & 0x01;
-			io[0x4D] |= armed;
-
-			cpu->PrepareSpeedSwitch(armed);
-
-		}
-		else if (addr == 0xFF4F)
-		{
-			ppu->ChangeVramBank(data & 0x01);
-			io[0x4F] = data & 0x01;
-		}
-		else if (addr == 0xFF55)
-		{
-			io[0x55] = data;
-			if (cgbMode)
-			{
-				if (hdmaHblankActive && !(data & 0x80))
-				{
-					// Cancel HDMATransfer
-					hdmaHblankActive = false;
-				}
-				else
-					HDMATransfer(data);
-			}
-		}
-		else if (addrCgbPalettes.Contains(addr))
-		{
-			ppu->Write(addr, data);
-		}
-		else if (addr == 0xFF6C)
-		{
-			ppu->Write(addr, data);
-		}
-		else if (addr == 0xFF70)
-		{
-			// WRAM bank
-			io[0x70] = data & 0xFF;
-		}
-		else // Fallback for unimplemented io in this range
-		{
-			io[addr & 0x7F] = data;
-		}
+		WriteIO(addr, data);
 	}
 	else if (addrHRAM.Contains(addr))
 	{
@@ -325,6 +196,251 @@ void Bus::Write(Address addr, uint8_t data)
 		cpu->SetIE(data);
 	}
 }
+
+uint8_t Bus::ReadIO(Address addr)
+{
+	uint8_t offset = addr & 0xFF;
+	switch (offset)
+	{
+	case GB_IO_JOYP:
+		return joypad->GetInput();
+
+	case GB_IO_SB:
+		return io[offset];
+	case GB_IO_SC:
+		// TODO: Serial transfer
+		return io[offset] | 0xFF;
+		return io[offset] | 0x7C;
+	
+	//0xFF03
+	
+	case GB_IO_DIV:
+	case GB_IO_TIMA:
+	case GB_IO_TMA:
+	case GB_IO_TAC:
+		return timer->Read(addr);
+	
+	case GB_IO_IF:
+		return cpu->GetIF();
+
+	// Audio register read code in default case
+
+	case GB_IO_DMA:
+		return io[offset];
+
+	case GB_IO_LCDC:
+	case GB_IO_STAT:
+	case GB_IO_SCY:
+	case GB_IO_SCX:
+	case GB_IO_LY:
+	case GB_IO_LYC:
+	case GB_IO_BGP:
+	case GB_IO_OBP0:
+	case GB_IO_OBP1:
+	case GB_IO_WY:
+	case GB_IO_WX:
+		return ppu->Read(addr);
+
+	case GB_IO_KEY0:
+		// TODO: KEY0 CPU mode select
+		//https://gbdev.io/pandocs/CGB_Registers.html#ff4c--key0sys-cgb-mode-only-cpu-mode-select
+		return 0xFF;
+	case GB_IO_KEY1:
+		if (cgbMode)
+			return (((uint8_t)cpu->doubleSpeedMode << 7) | (uint8_t)cpu->preparingSpeedSwitch);
+		else
+			return 0xFF;
+
+	case GB_IO_VBK:
+		if (cgbMode)
+			return io[GB_IO_VBK] | 0xFE;
+		else
+			return 0xFF;
+
+	case GB_IO_BANK:
+		// TODO: Boot rom 
+		// return 0xFE | gb->boot_rom_finished;
+		//return !bootRomEnabled | 0xFE;
+		return !bootRomEnabled | 0xFF;
+
+	// HDMA1234 Write only
+	case GB_IO_HDMA5:
+		if (cgbMode)
+			return io[offset];
+		else
+			return 0xFF;
+
+	case GB_IO_RP:
+		// TODO: Infrared communications port
+		if (cgbMode)
+			return io[offset];
+		else
+			return 0xFF;
+
+	case GB_IO_BGPI:
+	case GB_IO_BGPD:
+	case GB_IO_OBPI:
+	case GB_IO_OBPD:
+	case GB_IO_OPRI:
+		if (cgbMode)
+			return ppu->Read(addr);
+		else
+			return 0xFF;
+
+	case GB_IO_SVBK:
+	case GB_IO_PSM:
+	case GB_IO_PSWX:
+	case GB_IO_PSWY:
+	case GB_IO_PSW:
+	case GB_IO_PGB:
+	case GB_IO_PCM12:
+	case GB_IO_PCM34:
+		// Have zero clue what these "undocumented" registers are
+		return 0xFF;
+		//return io[offset];
+
+	default:
+		// Audio
+		if (addrAudioRegisters.Contains(addr))
+		{
+			return apu->Read(addr);
+		}
+		return 0xFF;
+	}
+
+	return 0xFF;
+}
+
+void Bus::WriteIO(Address addr, uint8_t data)
+{
+	uint8_t offset = addr & 0xFF;
+
+	switch (offset)
+	{
+	case GB_IO_JOYP:
+		joypad->Write(data);
+		break;
+
+	case GB_IO_SB:
+		io[offset] = data;
+		break;
+
+	case GB_IO_SC:
+		std::cout << "Writing to serial transfer 0xFF02: " << std::hex << (int)data << "\n";
+		io[offset] = data;
+		break;
+
+	case GB_IO_DIV:
+	case GB_IO_TIMA:
+	case GB_IO_TMA:
+	case GB_IO_TAC:
+		timer->Write(addr, data);
+		break;
+
+	case GB_IO_IF:
+		cpu->SetIF(data);
+		break;
+
+		// Audio registers handled in default
+
+	case GB_IO_LCDC:
+	case GB_IO_STAT:
+	case GB_IO_SCY:
+	case GB_IO_SCX:
+	case GB_IO_LY:
+	case GB_IO_LYC:
+	case GB_IO_BGP:
+	case GB_IO_OBP0:
+	case GB_IO_OBP1:
+	case GB_IO_WY:
+	case GB_IO_WX:
+		ppu->Write(addr, data);
+		break;
+
+	case GB_IO_DMA:
+		DMATransfer(data);
+		break;
+
+	case GB_IO_KEY0:
+		// TODO: KEY0 CPU mode select
+		io[offset] = data;
+		break;
+
+	case GB_IO_KEY1:
+	{
+		uint8_t armed = data & 0x01;
+		io[offset] |= armed;
+		cpu->PrepareSpeedSwitch(armed);
+		break;
+	}
+
+	case GB_IO_VBK:
+		if (cgbMode)
+			ppu->ChangeVramBank(data & 0x01);
+	
+		io[offset] = data;
+		break;
+
+	case GB_IO_BANK:
+		// TODO: Boot rom 
+		//bootRomEnabled |= data & 1;
+		bootRomEnabled = false;
+		break;
+
+	case GB_IO_HDMA1:
+	case GB_IO_HDMA2:
+	case GB_IO_HDMA3:
+	case GB_IO_HDMA4:
+		io[offset] = data;
+		break;
+
+	case GB_IO_HDMA5:
+		io[offset] = data;
+		if (cgbMode)
+		{
+			if (hdmaHblankActive && !(data & 0x80))
+				hdmaHblankActive = false;
+			else
+				HDMATransfer(data);
+		}
+		break;
+
+	case GB_IO_RP:
+		// TODO: Infrared communications port
+		io[offset] = data;
+		break;
+
+	case GB_IO_BGPI:
+	case GB_IO_BGPD:
+	case GB_IO_OBPI:
+	case GB_IO_OBPD:
+	case GB_IO_OPRI:
+		ppu->Write(addr, data);
+		break;
+
+	case GB_IO_SVBK:
+		io[0x70] = data & 0xFF;
+		break;
+
+	case GB_IO_PSM:
+	case GB_IO_PSWX:
+	case GB_IO_PSWY:
+	case GB_IO_PSW:
+	case GB_IO_PGB:
+	case GB_IO_PCM12:
+	case GB_IO_PCM34:
+		io[offset] = data;
+		break;
+
+	default:
+		if (addrAudioRegisters.Contains(addr))
+			apu->Write(addr, data);
+		else
+			io[offset] = data;
+		break;
+	}
+}
+
 
 void Bus::DMATransfer(uint8_t data)
 {
@@ -368,6 +484,7 @@ void Bus::HDMATransfer(uint8_t data)
 	}
 }
 
+
 // Triggered inside PPU
 void Bus::HBlankTransfer()
 {
@@ -393,7 +510,6 @@ void Bus::HBlankTransfer()
 }
 
 
-
 void Bus::RequestInterrupt(InterruptCode bit)
 {
 	cpu->RequestInterrupt(bit);
@@ -412,3 +528,89 @@ void Bus::LoadState(std::ifstream& in)
 	GBRead(in, hram);
 	GBRead(in, io);
 }
+
+/*
+
+	if (addr == 0xFF02)
+	{
+		io[0x02] = data;
+	}
+	else if (addr == addrJoypad)
+	{
+		joypad->Write(data);
+	}
+	else if (addr == addrInterruptFlag)
+	{
+		cpu->SetIF(data);
+		return;
+	}
+	else if (addrTimer.Contains(addr))
+	{
+		timer->Write(addr, data);
+		return;
+	}
+	else if (addr == addrDMATransfer)
+	{
+		DMATransfer(data);
+	}
+	else if (addrIO_LCD_Control.Contains(addr))
+	{
+		ppu->Write(addr, data);
+	}
+	else if (addrAudioRegisters.Contains(addr))
+	{
+		apu->Write(addr, data);
+	}
+	else if (addr == addrBootRomEnable)
+	{
+		bootRomEnabled = false;
+		return;
+	}
+
+	// CGB Stuff, I guess
+	else if (addr == 0xFF4D)
+	{
+		uint8_t armed = data & 0x01;
+		io[0x4D] |= armed;
+
+		cpu->PrepareSpeedSwitch(armed);
+
+	}
+	else if (addr == 0xFF4F)
+	{
+		ppu->ChangeVramBank(data & 0x01);
+		io[0x4F] = data & 0x01;
+	}
+	else if (addr == 0xFF55)
+	{
+		io[0x55] = data;
+		if (cgbMode)
+		{
+			if (hdmaHblankActive && !(data & 0x80))
+			{
+				// Cancel HDMATransfer
+				hdmaHblankActive = false;
+			}
+			else
+				HDMATransfer(data);
+		}
+	}
+	else if (addrCgbPalettes.Contains(addr))
+	{
+		ppu->Write(addr, data);
+	}
+	else if (addr == 0xFF6C)
+	{
+		ppu->Write(addr, data);
+	}
+	else if (addr == 0xFF70)
+	{
+		// WRAM bank
+		io[0x70] = data & 0xFF;
+	}
+	else // Fallback for unimplemented io in this range
+	{
+		io[addr & 0x7F] = data;
+	}
+
+*/

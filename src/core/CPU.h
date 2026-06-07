@@ -49,7 +49,7 @@ public:
 
 	void RequestInterrupt(InterruptCode bit);
 
-	uint8_t GetIF() const   { return interruptFlag; }
+	uint8_t GetIF() const   { return interruptFlag | 0xE0; }
 	uint8_t GetIE() const   { return interruptFlagEnabled ;}
 	void SetIF(uint8_t val) { interruptFlag = val; }
 	void SetIE(uint8_t val) { interruptFlagEnabled = val; }

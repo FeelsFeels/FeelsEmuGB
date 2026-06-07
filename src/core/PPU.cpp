@@ -25,6 +25,8 @@ void PPU::ResetRegisters()
         ocps = 0x00;
         ocpd = 0x00;
         opri = 0x00;
+        selectedVramBank1 = false;
+
         std::fill(vram1.begin(), vram1.end(), 0);
         std::fill(cgbBgPaletteData.begin(), cgbBgPaletteData.end(), 0);
         std::fill(cgbObjPaletteData.begin(), cgbObjPaletteData.end(), 0);
@@ -133,7 +135,7 @@ uint8_t PPU::Read(Address addr)
     switch (addr)
     {
     case 0xFF40: return lcdc;
-    case 0xFF41: return stat;
+    case 0xFF41: return stat | 0x80;
     case 0xFF42: return scy;
     case 0xFF43: return scx;
     case 0xFF44: return ly;
@@ -223,7 +225,7 @@ void PPU::Write(Address addr, uint8_t data)
 void PPU::RenderScanlineToBuffer()
 {
     const uint32_t paletteColors[4] = { 0xFFFFFFFF, 0xFFAAAAAA, 0xFF555555, 0xFF000000 };
-    const std::array<uint8_t, 8192>& vramToUse = selectedVramBank1 ? vram1 : vram;
+    const std::array<uint8_t, 8192>& vramToUse = (cgbMode && selectedVramBank1) ? vram1 : vram;
 
     bgColorIndex.fill(0);
     bgPriority.fill(0);

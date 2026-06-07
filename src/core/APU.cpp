@@ -108,7 +108,7 @@ uint8_t APU::Read(Address addr)
         if (ch2.channelEnabled) status |= 0x02;
         if (ch3.channelEnabled) status |= 0x04;
         if (ch4.channelEnabled) status |= 0x08;
-        return status;
+        return status | 0x70;
     }
 
 	// Square Channel 1

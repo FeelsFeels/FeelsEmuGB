@@ -19,6 +19,10 @@ public:
 
 	uint8_t Read(Address addr);
 	void Write(Address addr, uint8_t data);
+	uint8_t ReadIO(Address addr);
+	void WriteIO(Address addr, uint8_t data);
+
+
 	void DMATransfer(uint8_t data);
 	void HDMATransfer(uint8_t data);
 	void HBlankTransfer();
