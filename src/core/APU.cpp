@@ -1,5 +1,6 @@
 #include "APU.h"
 #include "Bus.h"
+#include "CPU.h"
 #include "Timer.h"
 #include "../GameBoySettings.h"
 
@@ -31,7 +32,8 @@ const int SQUARE_DUTY_PATTERNS[4][8] =
 //           = 16 * divider * 2^shift
 const int noiseDivisors[8] = { 8, 16, 32, 48, 64, 80, 96, 112 };
 
-uint16_t apuTargetBitMask = 0x1000; //4th bit
+uint16_t apuTargetBitMask              = 0x1000; //4th bit
+uint16_t apuTargetBitMask_double_speed = 0x2000;
 
 // Helper
 // Returns the newly calculated frequency, or a value > 2047 if it overflowed.
@@ -260,13 +262,14 @@ void APU::Write(Address addr, uint8_t data)
 
 void APU::Tick(int cycles)
 {
+    uint16_t targetTimerBitMask = cpu->IsDoubleSpeedMode() ? apuTargetBitMask_double_speed : apuTargetBitMask;
     for (int i = 0; i < cycles; ++i)
     {
         // Tick the Frame Sequencer (512 Hz, once every 8192 dots)
         // APU observes the timer class for div-apu ticks
 
         //// ticks on falling edge. that is, previous state is 1, current state is 0.
-        bool currentTargetBitState = timer->GetDiv() & apuTargetBitMask;
+        bool currentTargetBitState = timer->GetDiv() & targetTimerBitMask;
         if (previousTargetBitState && !currentTargetBitState)
         {
             StepDivAPUEvent();

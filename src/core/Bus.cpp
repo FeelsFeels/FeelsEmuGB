@@ -296,8 +296,8 @@ uint8_t Bus::ReadIO(Address addr)
 	case GB_IO_PCM12:
 	case GB_IO_PCM34:
 		// Have zero clue what these "undocumented" registers are
-		return 0xFF;
-		//return io[offset];
+		return io[offset];	// returning fallback fixes Link DX on startup?
+		//return 0xFF;
 
 	default:
 		// Audio

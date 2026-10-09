@@ -11,6 +11,7 @@ constexpr int T_CYCLES_PER_WAVE_TICK = 2;
 constexpr int MAX_LENGTH_TIMER_CH_1_2_4 = 64;
 constexpr int MAX_LENGTH_TIMER_CH3      = 256;
 
+class CPU;
 class Timer;
 
 struct SquareChannel
@@ -88,6 +89,7 @@ class APU
 public:
 	APU();
 
+	void AttachCPU(CPU* p) { cpu = p; }
 	void AttachTimer(Timer* p) { timer = p; }
 
 	void ResetRegisters();
@@ -140,6 +142,8 @@ private:
 	// APU Timer shortcut. Instead of ticking div-apu based on the system timer, I count 8192 cycles instead.
 	// TODO: Accuracy. 
 	Timer* timer;
+	CPU* cpu;
+
 	bool previousTargetBitState = false;
 
 	uint8_t divAPU = 0;

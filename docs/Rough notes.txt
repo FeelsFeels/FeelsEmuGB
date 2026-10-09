@@ -695,6 +695,8 @@ CPU and timer are now double speed. PPU, HDMA transfer to VRAM, APU remain unaff
 
 Speed switching itself takes 2050 M-cycles. During this time, DIV does not tick.
 
+For my double speed implementation, 
+
 >>> Infrared Communications? Is this Nintendo Switch?
 NA
 

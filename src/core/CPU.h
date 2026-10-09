@@ -63,6 +63,7 @@ public:
 	// Editor 
 	const Registers& GetRegisters() const { return reg; }
 	bool GetIME() const { return ime; }
+	bool IsDoubleSpeedMode() const { return doubleSpeedMode; }
 
 	// Logging
 	void StartTracing(const std::string& filename);

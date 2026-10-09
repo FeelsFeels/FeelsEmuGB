@@ -12,6 +12,7 @@ GameBoy::GameBoy()
 
 	timer.AttachBus(&bus);
 
+	apu.AttachCPU(&cpu);
 	apu.AttachTimer(&timer);
 
 	joypad.Reset();
@@ -115,9 +116,9 @@ int GameBoy::Update()
 
 	int cycles = cpu.Tick();
 	//timer.Tick(cycles);	// Timer ticked entirely within CPU using Clock().
-	
-	// Only timer and cpu ticks double.
-	//int ppuCycles = cgbMode ? cycles / 2 : cycles;
+
+	if (cpu.IsDoubleSpeedMode())
+		cycles /= 2;
 
 	ppu.Tick(cycles);
 	apu.Tick(cycles);
@@ -191,7 +192,6 @@ void GameBoy::GetChannelVolumes(float& ch1, float& ch2, float& ch3, float& ch4)
 
 void GameBoy::SaveGame()
 {
-	return;
 	if (cart)
 	{
 		auto info = cart->GetInfo();

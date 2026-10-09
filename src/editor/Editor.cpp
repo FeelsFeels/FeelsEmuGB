@@ -508,6 +508,10 @@ void DebugInfo::Draw(GameBoy& gb, ImGuiIO& io)
 
         const uint8_t pending = IF & IE;
         ImGui::Text("Pending (IF & IE): %02X", pending);
+
+        ImGui::Separator();
+
+        ImGui::Text("Is Double Speed: %s", cpu.IsDoubleSpeedMode() ? "TRUE" : "FALSE");
     }
 
     ImGui::End();

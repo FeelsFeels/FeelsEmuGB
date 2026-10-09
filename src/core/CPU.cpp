@@ -184,6 +184,10 @@ void CPU::ResetRegisters()
     stopped = false;
     interruptFlag = 0xE1;
     interruptFlagEnabled = 0x00;
+
+    doubleSpeedMode = false;
+    preparingSpeedSwitch = false;
+    prepareDoubleSpeedMode = false;
 }
 
 int CPU::Tick()
@@ -217,6 +221,7 @@ int CPU::Tick()
         }
     }
 
+    totalCyclesForInstruction = 0;
     if (halted)
     {
         uint8_t pending = interruptFlagEnabled & interruptFlag & 0x1F;
@@ -231,15 +236,30 @@ int CPU::Tick()
         if (ime)
         {
             HandleInterrupts();
-            return 20;
+            if (totalCyclesForInstruction > 0)
+            {
+                return totalCyclesForInstruction;
+                //if (doubleSpeedMode)
+                //{
+                //    return 40;
+                //}
+                //return 20;
+            }
         }
     }
 
-    totalCyclesForInstruction = 0;
     if (ime)
     {
         HandleInterrupts();
-        if (totalCyclesForInstruction > 0) return totalCyclesForInstruction;
+        if (totalCyclesForInstruction > 0)
+        {
+            return totalCyclesForInstruction;
+            //if (doubleSpeedMode)
+            //{
+            //    return 40;
+            //}
+            //return 20;
+        }
     }
 
     if (haltBug) { --reg.pc; haltBug = false; }
@@ -271,7 +291,6 @@ int CPU::HandleInterrupts()
 
     int interruptBitToHandle = -1;
 
-    Clock();
     for (int i = 0; i < 5; ++i)
     {
         if (interrupts & (1 << i))
@@ -284,8 +303,9 @@ int CPU::HandleInterrupts()
     {
         interruptFlag &= ~(1 << interruptBitToHandle);
     }
-    Clock();
     
+    Clock();
+    Clock();
     PushWord(reg.pc);
     Clock();
 
@@ -320,8 +340,11 @@ void CPU::Clock()
 
 void CPU::PrepareSpeedSwitch(bool b)
 {
-    preparingSpeedSwitch = true;
-    prepareDoubleSpeedMode = b;
+    if (cgbMode)
+    {
+        preparingSpeedSwitch = true;
+        prepareDoubleSpeedMode = b;
+    }
 }
 
 void CPU::SaveState(std::ofstream& out)
